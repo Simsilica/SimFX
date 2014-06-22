@@ -5,8 +5,6 @@ uniform mat4 g_ProjectionMatrix;
 uniform mat4 g_WorldMatrix;
 uniform vec3 g_CameraPosition;
 
-uniform vec3 m_LightPosition;
-
 #import "MatDefs/VertScattering.glsllib"
 
 
@@ -19,7 +17,7 @@ void main() {
     
     vec4 wPos = g_WorldMatrix * modelSpacePos;
 
-    calculateVertexGroundScattering(wPos.xyz, g_CameraPosition, m_LightPosition);
+    calculateVertexGroundScattering(wPos.xyz, g_CameraPosition);
     
     gl_Position = g_ViewProjectionMatrix * wPos;
 }

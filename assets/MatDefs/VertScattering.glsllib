@@ -1,6 +1,7 @@
 
 
 // Parameters required by the vert scattering
+uniform vec3 m_SunPosition;
 uniform float m_KmESun;
 uniform float m_InnerRadius;
 uniform float m_RadiusScale;
@@ -9,6 +10,7 @@ uniform vec3 m_KWavelengths4PI;
 uniform float m_AverageDensityScale;       
 uniform float m_InvAverageDensityHeight;
 uniform float m_PlanetScale;
+
 
 
 varying vec4 vColor;
@@ -101,7 +103,7 @@ void calculateGroundInAtmosphere( in vec3 direction, in float distance, in float
     rColor = accumulator * (invWavelengthsKrESun + mESun);
 } 
 
-void calculateVertexGroundScattering( in vec3 worldPos, in vec3 cameraPos, in vec3 lightPos ) {
+void calculateVertexGroundScattering( in vec3 worldPos, in vec3 cameraPos ) {
 
     vec3 direction = worldPos - cameraPos;
     direction *= m_PlanetScale;
@@ -112,7 +114,7 @@ void calculateVertexGroundScattering( in vec3 worldPos, in vec3 cameraPos, in ve
  
     calculateGroundInAtmosphere( direction, distance,  
                                  cameraPos.y * m_PlanetScale,
-                                 lightPos, 
+                                 m_SunPosition, 
                                  rColor, mColor );
     
     vColor.rgb = rColor;

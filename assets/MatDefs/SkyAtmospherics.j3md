@@ -2,7 +2,7 @@ MaterialDef Sky Atmospheric Scattering {
 
     MaterialParameters {
 
-        Vector3 LightPosition
+        Vector3 SunPosition
         
         Float Exposure
  

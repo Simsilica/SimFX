@@ -34,14 +34,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.simsilica.fx;
+package com.simsilica.fx.sky;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.FastMath;
-import com.jme3.math.Matrix4f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
+import java.util.HashSet;
+import java.util.Set;
 
 
 
@@ -56,12 +57,15 @@ public class AtmosphericParameters {
     // This one will be common and global so we might as
     // well keep an instance around.
     private Material skyMaterial;
-    
+ 
+    // For auto-updating if the caller opts for it
+    private Set<Material> groundMaterials = new HashSet<Material>();
+       
     /**
      *  The 'position' of the light in the sky, ie:
      *  -direction.
      */
-    private Vector3f lightPosition = new Vector3f();
+    private Vector3f sunPosition = new Vector3f();
  
     private float lightIntensity;   
     private float skyExposure;
@@ -92,7 +96,7 @@ public class AtmosphericParameters {
         setMieConstant(0.001f);
         this.mpaFactor = -0.990f;
  
-        this.lightPosition.set(0, 1, 0);       
+        this.sunPosition.set(0, 1, 0);       
         this.lightIntensity = 20;
         this.skyExposure = 1;
         this.groundExposure = 1;
@@ -114,7 +118,7 @@ public class AtmosphericParameters {
         }
        
         skyMaterial = new Material(assets, "MatDefs/SkyAtmospherics.j3md");
-        skyMaterial.setVector3("LightPosition", lightPosition);
+        skyMaterial.setVector3("SunPosition", sunPosition);
         skyMaterial.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);        
         skyMaterial.setVector3("KWavelengths4PI", kWavelengths4PI);        
 
@@ -127,6 +131,9 @@ public class AtmosphericParameters {
         // Right now just the one potential
         if( skyMaterial != null ) {
             updateSkyMaterial(skyMaterial);
+        }
+        for( Material m : groundMaterials ) {
+            applyGroundParameters(m);
         }
     }
 
@@ -169,12 +176,19 @@ public class AtmosphericParameters {
         m.setFloat("Flattening", skyFlattening);         
     }
 
+    public void applyGroundParameters( Material m, boolean autoUpdate ) {
+        applyGroundParameters(m);
+        if( autoUpdate ) {
+            groundMaterials.add(m);
+        }
+    }
+    
     public void applyGroundParameters( Material m ) {
         updatePackedStructures();
         
         // We may have never set them before
         m.setFloat("KmESun", scatteringConstants.z * lightIntensity); 
-        m.setVector3("LightPosition", lightPosition);
+        m.setVector3("SunPosition", sunPosition);
         m.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);        
         m.setVector3("KWavelengths4PI", kWavelengths4PI);
                 
@@ -291,11 +305,11 @@ public class AtmosphericParameters {
     }
  
     public void setLightDirection( Vector3f dir ) {
-        lightPosition.set(-dir.x, -dir.y, -dir.z);
+        sunPosition.set(-dir.x, -dir.y, -dir.z);
     }
     
     public Vector3f getLightDirection() {
-        return lightPosition.negate();
+        return sunPosition.negate();
     }
     
     public void setLightIntensity( float f ) {

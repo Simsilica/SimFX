@@ -10,10 +10,15 @@ void main() {
 
     vec4 groundColor = vec4(rGround, gGround, bGround, 1.0);
     
-    #ifndef GAMMA
-        gl_FragColor = calculateGroundColor(groundColor);
-    #else
+    #ifdef USE_SCATTERING
         vec4 color = calculateGroundColor(groundColor);
+    #else
+        vec4 color = groundColor;
+    #endif
+    
+    #ifndef GAMMA
+        gl_FragColor = color;
+    #else
         gl_FragColor.xyz = pow(color.xyz, vec3(GAMMA));        
     #endif
     gl_FragColor.a = 1.0;            

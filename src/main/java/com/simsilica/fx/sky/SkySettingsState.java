@@ -39,7 +39,6 @@ package com.simsilica.fx.sky;
 import com.jme3.app.Application;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
-import com.simsilica.fx.AtmosphericParameters;
 import com.simsilica.fx.LightingState;
 import com.simsilica.lemur.core.VersionedReference;
 import com.simsilica.lemur.event.BaseAppState;

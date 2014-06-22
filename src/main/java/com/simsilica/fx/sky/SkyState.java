@@ -47,7 +47,6 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Sphere;
-import com.simsilica.fx.AtmosphericParameters;
 import com.simsilica.fx.LightingState;
 import com.simsilica.fx.geom.TruncatedDome;
 import com.simsilica.lemur.GuiGlobals;

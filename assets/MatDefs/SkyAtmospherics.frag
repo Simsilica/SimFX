@@ -1,5 +1,5 @@
 
-uniform vec3 m_LightPosition;
+uniform vec3 m_SunPosition;
 uniform float m_PhasePrefix1;
 uniform float m_PhasePrefix2;
 uniform float m_PhasePrefix3;
@@ -13,7 +13,7 @@ varying vec4 vMieColor;
 #define GAMMA 0.5
 
 void main() {
-    vec3 lightPos = m_LightPosition;
+    vec3 lightPos = m_SunPosition;
     /*
     float g = m_MpaFactor;
     float g2 = g * g;        

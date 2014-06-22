@@ -5,7 +5,7 @@ uniform mat4 g_ViewProjectionMatrix;
 uniform mat4 g_WorldMatrix;
 uniform vec3 g_CameraPosition;
 
-uniform vec3 m_LightPosition;
+uniform vec3 m_SunPosition;
 
 uniform float m_KmESun;
 uniform float m_InnerRadius;
@@ -67,7 +67,7 @@ void calculateSkyInAtmosphere( in vec3 direction, in float distance, in float el
     // From here on, positions will be relative to sea level so that
     // they properly track the curve of the planet   
     vec3 camPos = vec3(0.0, m_InnerRadius + elevation, 0.0);  
-    vec3 lightPos = m_LightPosition;
+    vec3 lightPos = m_SunPosition;
     
     float rayLength = distance; 
     

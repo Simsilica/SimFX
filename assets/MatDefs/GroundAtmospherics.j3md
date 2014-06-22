@@ -2,10 +2,10 @@ MaterialDef Ground Atmospheric Scattering {
 
     MaterialParameters {
 
-        Vector3 LightPosition
-
  
-        // Ground scattering parameters       
+        // Ground scattering parameters
+        Boolean UseScattering       
+        Vector3 SunPosition
         Float Exposure        
         Float KmESun
         Float InnerRadius        
@@ -33,6 +33,7 @@ MaterialDef Ground Atmospheric Scattering {
         }
 
         Defines {
+            USE_SCATTERING : UseScattering            
         }
     }
 
