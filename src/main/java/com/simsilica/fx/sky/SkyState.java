@@ -183,5 +183,5 @@ public class SkyState extends BaseAppState {
     @Override
     protected void disable() {
         sky.removeFromParent();
-    }
+    }    
 }
