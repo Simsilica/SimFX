@@ -34,7 +34,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.simsilica.iso.demo;
+package com.simsilica.fx;
 
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
@@ -67,7 +67,7 @@ public class LightingState extends BaseAppState {
     private AmbientLight ambient;
     private float timeOfDay = FastMath.atan2(1, 0.3f) / FastMath.PI;    
     private float inclination = FastMath.HALF_PI - FastMath.atan2(1, 0.4f);
-    private float orientation = FastMath.HALF_PI; 
+    private float orientation = 0; //FastMath.HALF_PI; 
     
     private Node rootNode;  // the one we added the lights to
     
@@ -116,7 +116,9 @@ public class LightingState extends BaseAppState {
         Quaternion q2 = new Quaternion().fromAngles(inclination, orientation, 0);
         Vector3f dir = q2.mult(q1).mult(Vector3f.UNIT_Y.negate());
         lightDir.setObject(dir);
-        sun.setDirection(lightDir.getObject());
+        if( sun != null ) {
+            sun.setDirection(lightDir.getObject());
+        }
     }
     
     @Override
@@ -129,7 +131,7 @@ public class LightingState extends BaseAppState {
         ambient.setColor(ambientColor);
         resetLightDir();
         
-        setTimeOfDay(0.05f);
+        //setTimeOfDay(0.05f);
     }
 
     @Override
