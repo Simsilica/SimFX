@@ -123,6 +123,26 @@ void calculateVertexGroundScattering( in vec3 worldPos, in vec3 cameraPos ) {
     vColor2.a = 1.0;     
 } 
 
+void calculateVertexGroundScattering( in vec3 worldPos, in vec3 cameraPos, in float groundScale ) {
+
+    vec3 direction = worldPos - cameraPos;
+    direction *= m_PlanetScale * groundScale;
+    float distance = length(direction);
+
+    vec3 rColor = vec3(0.0, 0.0, 0.0);
+    vec3 mColor = vec3(0.0, 0.0, 0.0);
+ 
+    calculateGroundInAtmosphere( direction, distance,  
+                                 cameraPos.y * m_PlanetScale,
+                                 m_SunPosition, 
+                                 rColor, mColor );
+    
+    vColor.rgb = rColor;
+    vColor.a = 1.0;
+    vColor2.rgb = mColor;
+    vColor2.a = 1.0;     
+} 
+
 
 // For the frag shader
 uniform float m_Exposure;

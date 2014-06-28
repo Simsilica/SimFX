@@ -66,12 +66,17 @@ public class TruncatedDome extends Mesh {
     
     private float innerRadius;
     private float outerRadius;
+    private float baseRadius;
     
     private boolean inside;
     
     public TruncatedDome( float innerRadius, float outerRadius, 
                           int radials, int slices, boolean inside ) {
         updateGeometry(innerRadius, outerRadius, radials, slices, inside);
+    }
+    
+    public float getBaseRadius() {
+        return baseRadius;
     }
     
     public final void updateGeometry( float innerRadius, float outerRadius, 
@@ -127,7 +132,7 @@ public class TruncatedDome extends Mesh {
         // angle is innerRadius and the hypotenuse is the outerRadius.
         // So... angle is...
         sliceAngles[0] = FastMath.HALF_PI - FastMath.acos(innerRadius / outerRadius);
-        float baseRadius = FastMath.cos(sliceAngles[0]) * outerRadius;
+        baseRadius = FastMath.cos(sliceAngles[0]) * outerRadius;
         for( int i = 1; i < elevVertCount; i++ ) {
             float t = 1.0f - ((float)i / elevVertCount);
             t = t * t;

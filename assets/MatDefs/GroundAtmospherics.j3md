@@ -2,6 +2,9 @@ MaterialDef Ground Atmospheric Scattering {
 
     MaterialParameters {
 
+        Color GroundColor
+        Boolean FollowCamera
+        Float GroundScale : 1
  
         // Ground scattering parameters
         Boolean UseScattering       
@@ -33,7 +36,8 @@ MaterialDef Ground Atmospheric Scattering {
         }
 
         Defines {
-            USE_SCATTERING : UseScattering            
+            USE_SCATTERING : UseScattering
+            FOLLOW_CAMERA : FollowCamera  
         }
     }
 

@@ -38,9 +38,11 @@ package com.simsilica.fx.sky;
 
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.AssetManager;
 import com.jme3.bounding.BoundingSphere;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue.Bucket;
 import com.jme3.scene.Geometry;
@@ -68,6 +70,9 @@ public class SkyState extends BaseAppState {
     private float domeInnerRadius = 2000;
     private float domeOuterRadius = 2000 * 1.025f;
  
+    private Geometry groundDisc;
+    private boolean showGround = true;
+ 
     private boolean flat = false;
     
     // Colors used for flat shading   
@@ -76,6 +81,7 @@ public class SkyState extends BaseAppState {
  
     private Material flatMaterial;
     private Material atmosphericMaterial;
+    private Material groundMaterial;
     
     private AtmosphericParameters atmosphericParms;
     
@@ -119,13 +125,40 @@ public class SkyState extends BaseAppState {
         return flat;
     }
     
+    public void setShowGroundDisc( boolean b ) {
+        if( showGround == b ) {
+            return;
+        }
+        this.showGround = b;
+        resetGround();
+    }
+    
+    public boolean getShowGroundDisc() {
+        return showGround;
+    }
+    
     protected void resetMaterials() {
         if( flat ) {
             sky.setMaterial(flatMaterial);
             sun.setCullHint(CullHint.Inherit);
+            groundMaterial.setBoolean("UseScattering", false);
         } else {
             sky.setMaterial(atmosphericMaterial);
             sun.setCullHint(CullHint.Never);
+            groundMaterial.setBoolean("UseScattering", true);
+        }
+    }
+    
+    protected void resetGround() {
+        if( groundDisc == null ) {
+            return;
+        }
+        if( isEnabled() ) {
+            if( showGround ) {
+                rootNode.attachChild(groundDisc);
+            } else {
+                groundDisc.removeFromParent();
+            }
         }
     }
     
@@ -157,6 +190,21 @@ public class SkyState extends BaseAppState {
         sky.setMaterial(atmosphericMaterial); 
         sky.setQueueBucket(Bucket.Sky);
         sky.setCullHint(CullHint.Never);
+        
+        AssetManager assets = app.getAssetManager();
+        
+        TruncatedDome ground = new TruncatedDome(domeInnerRadius, domeOuterRadius, 100, 50, true);
+        groundDisc = new Geometry("ground", ground);
+        groundDisc.rotate(FastMath.PI, 0, 0);
+        groundDisc.setQueueBucket(Bucket.Sky);
+        groundMaterial = mat = new Material(assets, "MatDefs/GroundAtmospherics.j3md");
+        mat.setColor("GroundColor", new ColorRGBA(0.25f, 0.25f, 0.3f, 1));
+        mat.setBoolean("FollowCamera", true);
+        mat.setBoolean("UseScattering", true);
+        mat.setFloat("GroundScale", 10);
+        //mat.getAdditionalRenderState().setWireframe(true);
+        groundDisc.setMaterial(mat);
+        atmosphericParms.applyGroundParameters(mat, true);   
     }
 
     @Override
@@ -178,10 +226,14 @@ public class SkyState extends BaseAppState {
     @Override
     protected void enable() {
         rootNode.attachChild(sky);
+        if( showGround ) {
+            rootNode.attachChild(groundDisc);
+        }
     }
 
     @Override
     protected void disable() {
         sky.removeFromParent();
+        groundDisc.removeFromParent();
     }    
 }

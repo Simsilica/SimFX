@@ -1,14 +1,16 @@
 
 #import "MatDefs/FragScattering.glsllib"
 
-const float rGround = 40.0/255.0; 
-const float gGround = 88.0/255.0; 
-const float bGround = 16.0/255.0; 
+uniform vec4 m_GroundColor;
+
+//const float rGround = 40.0/255.0; 
+//const float gGround = 88.0/255.0; 
+//const float bGround = 16.0/255.0; 
 
 
 void main() {
 
-    vec4 groundColor = vec4(rGround, gGround, bGround, 1.0);
+    vec4 groundColor = m_GroundColor; //vec4(rGround, gGround, bGround, 1.0);
     
     #ifdef USE_SCATTERING
         vec4 color = calculateGroundColor(groundColor);

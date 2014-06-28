@@ -112,6 +112,7 @@ public class SkySettingsState extends BaseAppState {
         settings.addFloatProperty("Orientation", getState(LightingState.class), "orientation", 0f, FastMath.TWO_PI, 0.01f);
         
         settings.addBooleanProperty("Flat Shaded", getState(SkyState.class), "flatShaded");
+        settings.addBooleanProperty("Show Ground Disc", getState(SkyState.class), "showGroundDisc");
     }
 
     @Override
