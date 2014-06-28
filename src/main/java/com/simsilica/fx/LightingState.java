@@ -84,6 +84,14 @@ public class LightingState extends BaseAppState {
     public VersionedReference<Vector3f> getLightDirRef() {
         return lightDir.createReference();
     }
+ 
+    public void setAmbient( ColorRGBA ambient ) {
+        this.ambientColor.set(ambient);
+    }
+    
+    public ColorRGBA getAmbient() {
+        return ambientColor;
+    }
     
     public void setTimeOfDay( float f ) {
         if( this.timeOfDay == f ) {
