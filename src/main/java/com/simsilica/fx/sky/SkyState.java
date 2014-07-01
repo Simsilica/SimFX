@@ -137,6 +137,10 @@ public class SkyState extends BaseAppState {
         return showGround;
     }
     
+    public Material getGroundDiscMaterial() {
+        return groundMaterial;
+    }
+    
     protected void resetMaterials() {
         if( flat ) {
             sky.setMaterial(flatMaterial);
