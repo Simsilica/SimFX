@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: LightingState.java 161 2014-06-28 16:14:28Z pspeed42 $
  * 
  * Copyright (c) 2014, Simsilica, LLC
  * All rights reserved.
@@ -72,9 +72,15 @@ public class LightingState extends BaseAppState {
     private Node rootNode;  // the one we added the lights to
     
     public LightingState() {
-        lightDir.setObject(new Vector3f(-0.2f, -1, -0.3f).normalizeLocal());
+        this(FastMath.atan2(1, 0.3f) / FastMath.PI);
+    }
+
+    public LightingState( float time ) {
+        //lightDir.setObject(new Vector3f(-0.2f, -1, -0.3f).normalizeLocal());
         this.sunColor = DEFAULT_DIFFUSE.clone();
         this.ambientColor = DEFAULT_AMBIENT.clone();
+        setTimeOfDay(time);
+        resetLightDir(); // just in case it didn't change but we still need to calculate it
     }
  
     public DirectionalLight getSun() {
@@ -83,6 +89,14 @@ public class LightingState extends BaseAppState {
     
     public VersionedReference<Vector3f> getLightDirRef() {
         return lightDir.createReference();
+    }
+
+    public void setSunColor( ColorRGBA color ) {
+        this.sunColor.set(color);
+    }
+    
+    public ColorRGBA getSunColor() {
+        return sunColor;
     }
  
     public void setAmbient( ColorRGBA ambient ) {
