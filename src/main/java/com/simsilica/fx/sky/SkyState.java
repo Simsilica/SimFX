@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: SkyState.java 174 2014-07-01 08:22:41Z pspeed42 $
  * 
  * Copyright (c) 2014, Simsilica, LLC
  * All rights reserved.
@@ -79,6 +79,9 @@ public class SkyState extends BaseAppState {
     private ColorRGBA skyColor;
     private ColorRGBA sunColor;
  
+    // Color calculated from current atmospheric parms
+    private ColorRGBA lightingColor = new ColorRGBA(1, 1, 1, 1);
+ 
     private Material flatMaterial;
     private Material atmosphericMaterial;
     private Material groundMaterial;
@@ -139,6 +142,10 @@ public class SkyState extends BaseAppState {
     
     public Material getGroundDiscMaterial() {
         return groundMaterial;
+    }
+
+    public ColorRGBA getLightingColor() {
+        return lightingColor;
     }
     
     protected void resetMaterials() {
@@ -201,6 +208,7 @@ public class SkyState extends BaseAppState {
         groundDisc = new Geometry("ground", ground);
         groundDisc.rotate(FastMath.PI, 0, 0);
         groundDisc.setQueueBucket(Bucket.Sky);
+        groundDisc.setCullHint(CullHint.Never);
         groundMaterial = mat = new Material(assets, "MatDefs/GroundAtmospherics.j3md");
         mat.setColor("GroundColor", new ColorRGBA(0.25f, 0.25f, 0.3f, 1));
         mat.setBoolean("FollowCamera", true);
@@ -208,7 +216,9 @@ public class SkyState extends BaseAppState {
         mat.setFloat("GroundScale", 10);
         //mat.getAdditionalRenderState().setWireframe(true);
         groundDisc.setMaterial(mat);
-        atmosphericParms.applyGroundParameters(mat, true);   
+        atmosphericParms.applyGroundParameters(mat, true);
+           
+        atmosphericParms.calculateGroundColor(ColorRGBA.White, Vector3f.UNIT_X, 1f, 0, lightingColor);
     }
 
     @Override
@@ -220,6 +230,7 @@ public class SkyState extends BaseAppState {
         if( lightDir.update() ) {
             sun.setLocalTranslation(lightDir.get().mult(-900));
             atmosphericParms.setLightDirection(lightDir.get());
+            atmosphericParms.calculateGroundColor(ColorRGBA.White, Vector3f.UNIT_X, 1f, 0, lightingColor);
         }
         
         if( flat ) {
