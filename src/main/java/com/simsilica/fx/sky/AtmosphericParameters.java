@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: AtmosphericParameters.java 149 2014-06-22 12:02:17Z pspeed42 $
  * 
  * Copyright (c) 2014, Simsilica, LLC
  * All rights reserved.
@@ -38,6 +38,7 @@ package com.simsilica.fx.sky;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
@@ -391,7 +392,213 @@ public class AtmosphericParameters {
     public float getBlueWavelength() {
         return wavelengths.z;
     }
+ 
+    public ColorRGBA calculateGroundColor( ColorRGBA color, Vector3f direction, float distance, float elevation, ColorRGBA target ) {
+        if( target == null ) {
+            target = new ColorRGBA(0, 0, 0, 1);
+        }
+        
+        float planetScale = innerRadius / planetRadius;        
+        
+        Vector3f[] parms = calculateGroundInAtmosphere(direction, distance * planetScale, elevation * planetScale, null);
+        
+        // return (vColor + color * vColor2) * m_Exposure;
+        target.r = (parms[0].x + color.r * parms[1].x) * groundExposure;
+        target.g = (parms[0].y + color.g * parms[1].y) * groundExposure;
+        target.b = (parms[0].z + color.b * parms[1].z) * groundExposure;
+        target.a = color.a;       
+        
+        return target;
+    }        
+ 
+    private int nSamples = 2;
+    private float fSamples = 2.0f;
+
+    private float scale( float fCos ) {
+	    float x = 1.0f - fCos;
+	    return averageDensityScale * FastMath.exp(-0.00287f + x*(0.459f + x*(3.83f + x*(-6.80f + x*5.25f))));
+    }
+  
+    public Vector3f[] calculateGroundInAtmosphere( Vector3f direction, float distance, float elevation, Vector3f[] target ) {
+        if( target == null ) {
+            target = new Vector3f[] { new Vector3f(), new Vector3f() };
+        }
+        
+        float scaleDepth = averageDensityScale;
+        float scaleOverScaleDepth = 1 / ((outerRadius - innerRadius) * averageDensityScale);
+        
+        //float innerRadius = innerRadius;
+        float radiusScale = 1 / (outerRadius - innerRadius);
+        Vector3f invWavelengthsKrESun = invPow4WavelengthsKrESun;
+        float mESun = scatteringConstants.z * lightIntensity;
+        
+        Vector3f camPos = new Vector3f(0, innerRadius + elevation, 0);
+        
+        float rayLength = distance;
+        
+        // Setup to cast the ray sections for sample accumulation
+        //Vector3f start = camPos;
     
+        // Trying something... going to try doing the ray backwards
+        Vector3f start = camPos.add(direction.mult(distance));
+        direction = direction.mult(-1);
+    
+        float height = start.y;  // camera is always centered so y is good enough for elevation.
+        float offset = innerRadius - height;
+        float depth = FastMath.exp(scaleOverScaleDepth * offset);
+        float startAngle = direction.dot(start) / height;
+        float startOffset = depth * scale(startAngle);
+    
+        // Setup the loop stepping
+        float sampleLength = rayLength / fSamples;
+        float scaledLength = sampleLength * radiusScale;  // samppleLength * (1 / (outer - inner))
+        Vector3f sampleStep = direction.mult(sampleLength);
+        Vector3f samplePoint = start.add(sampleStep.mult(0.5f));  
+        float scatter = 0.0f;
+ 
+        Vector3f accumulator = new Vector3f(0.0f, 0.0f, 0.0f);
+        Vector3f attenuation = new Vector3f(0.0f, 0.0f, 0.0f);
+        
+        for( int i = 0; i < nSamples; i++ ) {
+ 
+            // Ground points are generally always close enough that we pretend
+            // the world is flat.   
+            height = samplePoint.y;                                 
+            offset = innerRadius - height;
+            depth = FastMath.exp(scaleOverScaleDepth * offset);
+  
+            float lightAngle = sunPosition.dot(samplePoint) / height;
+            float cameraAngle = direction.dot(samplePoint) / height;
+ 
+            scatter = startOffset + depth * (scale(lightAngle) - scale(cameraAngle));
+
+            // m_InvWaveLength = 1 / (waveLength ^ 4)
+            // m_KWavelengths4PI = K(wavelength) * 4 * PI
+            //  = (m_InvWavelengths * r4PI + m4PI) 
+            //attenuation = exp(-scatter * (m_InvWavelengths * r4PI + m4PI));
+            attenuation.x = FastMath.exp(-scatter * kWavelengths4PI.x);
+            attenuation.y = FastMath.exp(-scatter * kWavelengths4PI.y);
+            attenuation.z = FastMath.exp(-scatter * kWavelengths4PI.z);
+ 
+            accumulator.addLocal(attenuation.mult(depth * scaledLength));
+        
+            // Step the sample point to the next value
+            samplePoint.addLocal(sampleStep);
+        }
+
+        // Now set the out parameters
+    
+        // General attenuation... we stick it in the Mie color because I'm lazy
+        target[1].set(attenuation); 
+    
+        // Rayleigh color
+        // rColor = accumulator * (invWavelengthsKrESun + mESun);
+        target[0].x = accumulator.x * (invWavelengthsKrESun.x + mESun);               
+        target[0].y = accumulator.y * (invWavelengthsKrESun.y + mESun);               
+        target[0].z = accumulator.z * (invWavelengthsKrESun.z + mESun);               
+        
+        return target;
+    }       
 }
 
 
+/*
+
+From the shader
+
+void calculateGroundInAtmosphere( in vec3 direction, in float distance, in float elevation, in vec3 lightPos, out vec3 rColor, out vec3 mColor ) {
+
+    float scaleDepth = m_AverageDensityScale;  
+    float scaleOverScaleDepth = m_InvAverageDensityHeight;
+     
+    float innerRadius = m_InnerRadius;
+    float radiusScale = m_RadiusScale;
+    vec3 invWavelengthsKrESun = m_InvWavelengthsKrESun;
+    float mESun = m_KmESun; 
+ 
+    // Create a camera position relative to sea level
+    // From here on, positions will be relative to sea level so that
+    // they properly track the curve of the planet   
+    vec3 camPos = vec3(0.0, innerRadius + elevation, 0.0);  
+    //vec3 lightPos = m_LightPosition;
+    
+    float rayLength = distance;
+    
+    // Setup to cast the ray sections for sample accumulation
+    vec3 start = camPos;
+    
+    // Trying something... going to try doing the ray backwards
+    start = camPos + direction * distance;
+    direction *= -1.0;
+    
+    float height = start.y;  // camera is always centered so y is good enough for elevation.
+    float offset = innerRadius - height;
+    float depth = exp(scaleOverScaleDepth * offset);
+    float startAngle = dot(direction, start) / height;
+    float startOffset = depth * scale(startAngle);
+    
+    // Setup the loop stepping
+    float sampleLength = rayLength / fSamples;
+    float scaledLength = sampleLength * radiusScale;  // samppleLength * (1 / (outer - inner))  
+    vec3 sampleStep = direction * sampleLength;
+    vec3 samplePoint = start + sampleStep * 0.5; // samples are in the middle of the sample ray
+    float scatter = 0.0;
+ 
+    vec3 accumulator = vec3(0.0, 0.0, 0.0);
+    vec3 attenuation = vec3(0.0, 0.0, 0.0);
+    for( int i = 0; i < nSamples; i++ ) {
+ 
+        // Ground points are generally always close enough that we pretend
+        // the world is flat.   
+        height = samplePoint.y;                                 
+        offset = innerRadius - height;
+        depth = exp(scaleOverScaleDepth * offset);
+  
+        float lightAngle = dot(lightPos, samplePoint) / height;
+        float cameraAngle = dot(direction, samplePoint) / height;
+ 
+        scatter = startOffset + depth * (scale(lightAngle) - scale(cameraAngle));
+
+        // m_InvWaveLength = 1 / (waveLength ^ 4)
+        // m_KWavelengths4PI = K(wavelength) * 4 * PI
+        //  = (m_InvWavelengths * r4PI + m4PI) 
+        //attenuation = exp(-scatter * (m_InvWavelengths * r4PI + m4PI));
+        attenuation = exp(-scatter * m_KWavelengths4PI);
+        
+        accumulator += attenuation * (depth * scaledLength);
+        
+        // Step the sample point to the next value
+        samplePoint += sampleStep;
+    }
+
+    // Now set the out parameters
+    
+    // General attenuation... we stick it in the Mie color because I'm lazy
+    mColor = attenuation; 
+    
+    // Rayleigh color
+    rColor = accumulator * (invWavelengthsKrESun + mESun);
+} 
+
+void calculateVertexGroundScattering( in vec3 worldPos, in vec3 cameraPos ) {
+
+    vec3 direction = worldPos - cameraPos;
+    direction *= m_PlanetScale;
+    float distance = length(direction);
+
+    vec3 rColor = vec3(0.0, 0.0, 0.0);
+    vec3 mColor = vec3(0.0, 0.0, 0.0);
+ 
+    calculateGroundInAtmosphere( direction, distance,  
+                                 cameraPos.y * m_PlanetScale,
+                                 m_SunPosition, 
+                                 rColor, mColor );
+    
+    vColor.rgb = rColor;
+    vColor.a = 1.0;
+    vColor2.rgb = mColor;
+    vColor2.a = 1.0;     
+} 
+
+
+*/
