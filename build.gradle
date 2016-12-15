@@ -1,28 +1,51 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        // This sucks down a lot of stuff that 'normal' users wouldn't 
+        // have and won't need anyway.
+        if( project.hasProperty('releaseUser') ) {
+            classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
+        }
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'maven'
 
 version='1.0.1-SNAPSHOT'
 group='com.simsilica'
 
+ext.jmeVersion = "3.1.0-alpha4" 
+
 repositories {
     mavenLocal()
     jcenter()
-    
-    // Temporary until JME jars are in jcenter()   
-    maven { url "http://dl.bintray.com/jmonkeyengine/org.jmonkeyengine" }        
 }
 
-// Make sure the build file declares what it actually imports
-configurations.compile {
-    transitive = false
+// Version meta-data
+ext {
+    releaseDescription = "SimFX ${project.version}"    
+    releaseVcsTag = "${project.name}-v${project.version}"    
 }
+
+// Project-wide meta-data
+ext {
+    bintrayLabels = ['jMonkeyEngine', 'gamedev', 'util']
+    websiteUrl = 'https://github.com/Simsilica/SimFX'
+    vcsUrl = 'https://github.com/Simsilica/SimFX.git'
+    githubRepo = 'Simsilica/SimFX'
+    issueTrackerUrl = 'https://github.com/Simsilica/SimFX/issues'
+}
+
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
-    compile "org.jmonkeyengine:jme3-core:3.1.+"
+    compile "org.jmonkeyengine:jme3-core:$jmeVersion"
     
-    compile "com.simsilica:lemur:1.6.+"
-    compile "com.simsilica:lemur-props:1.0.+"
+    compile "com.simsilica:lemur:1.9.1"
+    compile "com.simsilica:lemur-props:1.0.1"
     
     compile 'org.slf4j:slf4j-api:1.7.13'
 }
@@ -39,18 +62,16 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from javadoc.destinationDir
 }
- 
-task assetsJar(type: Jar) {
-    classifier = 'assets'
-    from file('assets')
-    exclude '**/*.psd' 
-    exclude '**/.backups' 
-}
- 
+  
 artifacts {
     archives sourcesJar
     archives javadocJar
-    archives assetsJar
+}
+
+// Put this at the end or it won't pick up the project.version and stuff
+if( project.hasProperty('releaseUser') ) {
+    apply plugin: 'com.jfrog.bintray'
+    apply from: 'https://raw.githubusercontent.com/Simsilica/gradle-plugins/master/simtools-release.gradle'
 }
 
 

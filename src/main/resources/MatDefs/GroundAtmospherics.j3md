@@ -1,0 +1,44 @@
+MaterialDef Ground Atmospheric Scattering {
+
+    MaterialParameters {
+
+        Color GroundColor
+        Boolean FollowCamera
+        Float GroundScale : 1
+ 
+        // Ground scattering parameters
+        Boolean UseScattering       
+        Vector3 SunPosition
+        Float Exposure        
+        Float KmESun
+        Float InnerRadius        
+        Float RadiusScale
+        Float PlanetScale : 1        
+        Vector3 InvWavelengthsKrESun        
+        Float AverageDensityScale
+        Float InvAverageDensityHeight;
+        Vector3 KWavelengths4PI;        
+    }
+
+    Technique {
+
+        VertexShader GLSL110:   MatDefs/GroundAtmospherics.vert
+        FragmentShader GLSL110: MatDefs/GroundAtmospherics.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            ViewProjectionMatrix
+            WorldViewMatrix
+            ViewMatrix
+            ProjectionMatrix
+            WorldMatrix
+            CameraPosition
+        }
+
+        Defines {
+            USE_SCATTERING : UseScattering
+            FOLLOW_CAMERA : FollowCamera  
+        }
+    }
+
+}
