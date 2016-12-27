@@ -415,8 +415,8 @@ public class AtmosphericParameters {
     private float fSamples = 2.0f;
 
     private float scale( float fCos ) {
-	    float x = 1.0f - fCos;
-	    return averageDensityScale * FastMath.exp(-0.00287f + x*(0.459f + x*(3.83f + x*(-6.80f + x*5.25f))));
+        float x = 1.0f - fCos;
+        return averageDensityScale * FastMath.exp(-0.00287f + x*(0.459f + x*(3.83f + x*(-6.80f + x*5.25f))));
     }
   
     public Vector3f[] calculateGroundInAtmosphere( Vector3f direction, float distance, float elevation, Vector3f[] target ) {
