@@ -1,0 +1,24 @@
+MaterialDef Depth Blur {
+
+    MaterialParameters {
+        Int NumSamples
+        Int NumSamplesDepth
+        Texture2D Texture
+        Texture2D DepthTexture
+    }
+
+    Technique {
+        VertexShader GLSL100:   Common/MatDefs/Post/Post.vert
+        FragmentShader GLSL100: MatDefs/shadow/Null.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+        }
+        
+        Defines {
+            RESOLVE_MS : NumSamples
+            RESOLVE_DEPTH_MS : NumSamplesDepth
+        }
+    }
+
+}

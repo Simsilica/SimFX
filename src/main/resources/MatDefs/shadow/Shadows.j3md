@@ -1,0 +1,29 @@
+MaterialDef Simple Shadows {
+
+    MaterialParameters {
+        Int NumSamples
+        Int NumSamplesDepth
+
+        Color ShadowColor
+
+        Texture2D FrameTexture
+        Texture2D DepthTexture
+    }
+
+    Technique {
+        VertexShader GLSL120:   MatDefs/shadow/Shadows.vert
+        FragmentShader GLSL130: MatDefs/shadow/Shadows.frag
+
+        WorldParameters {
+            ViewProjectionMatrix
+            FrustumNearFar
+            ViewPort
+        }
+
+        Defines {
+            RESOLVE_MS : NumSamples
+            RESOLVE_DEPTH_MS : NumSamplesDepth
+        }
+    }
+
+}
