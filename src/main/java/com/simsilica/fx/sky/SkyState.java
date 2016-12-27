@@ -84,6 +84,8 @@ public class SkyState extends BaseAppState {
  
     private Material flatMaterial;
     private Material atmosphericMaterial;
+    
+    private ColorRGBA groundColor = new ColorRGBA(0.25f, 0.25f, 0.3f, 1); 
     private Material groundMaterial;
     
     private AtmosphericParameters atmosphericParms;
@@ -144,6 +146,10 @@ public class SkyState extends BaseAppState {
         return groundMaterial;
     }
 
+    public ColorRGBA getGroundColor() {
+        return groundColor;
+    }
+
     public ColorRGBA getLightingColor() {
         return lightingColor;
     }
@@ -185,7 +191,7 @@ public class SkyState extends BaseAppState {
  
         // Add a sun sphere
         Sphere orb = new Sphere(6, 12, 50);
-        sun = new Geometry("Sun", orb);
+        sun = new Geometry("Sun", orb);        
         Material mat = GuiGlobals.getInstance().createMaterial(sunColor, false).getMaterial(); 
         sun.setMaterial(mat);
         sun.move(lightDir.get().mult(-900));
@@ -210,7 +216,7 @@ public class SkyState extends BaseAppState {
         groundDisc.setQueueBucket(Bucket.Sky);
         groundDisc.setCullHint(CullHint.Never);
         groundMaterial = mat = new Material(assets, "MatDefs/GroundAtmospherics.j3md");
-        mat.setColor("GroundColor", new ColorRGBA(0.25f, 0.25f, 0.3f, 1));
+        mat.setColor("GroundColor", groundColor);
         mat.setBoolean("FollowCamera", true);
         mat.setBoolean("UseScattering", true);
         mat.setFloat("GroundScale", 10);
