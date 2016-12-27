@@ -13,6 +13,7 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'checkstyle'
 
 version='1.0.1-SNAPSHOT'
 group='com.simsilica'
@@ -50,6 +51,10 @@ dependencies {
     compile 'org.slf4j:slf4j-api:1.7.13'
 }
 
+checkstyle {
+   configFile = rootProject.file('checkstyle.xml')
+   configProperties = [projectRoot: "${rootDir}"]
+}
 
 // Configuration to produce maven-repo style -sources and -javadoc jars
 task sourcesJar(type: Jar) {
