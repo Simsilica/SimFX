@@ -145,6 +145,11 @@ public class LightingState extends BaseAppState {
     
     @Override
     protected void initialize( Application app ) {
+
+        if( rootNode == null ) {
+            rootNode = ((SimpleApplication)app).getRootNode();
+        }
+
         sun = new DirectionalLight();
         sun.setColor(sunColor);
         sun.setDirection(lightDir.getObject());
@@ -160,9 +165,22 @@ public class LightingState extends BaseAppState {
     protected void cleanup( Application app ) {
     }
 
+    /**
+     * @param rootNode the root node.
+     */
+    public void setRootNode(final Node rootNode) {
+        this.rootNode = rootNode;
+    }
+
+    /**
+     * @return the root node.
+     */
+    public Node getRootNode() {
+        return rootNode;
+    }
+
     @Override
     protected void enable() {
-        rootNode = ((SimpleApplication)getApplication()).getRootNode();
         rootNode.addLight(sun);
         rootNode.addLight(ambient);
     }
