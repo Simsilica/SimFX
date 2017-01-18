@@ -57,19 +57,20 @@ import com.simsilica.lemur.event.BaseAppState;
 public class LightingState extends BaseAppState {
 
     public static final ColorRGBA DEFAULT_DIFFUSE = ColorRGBA.White.mult(2); 
-    public static final ColorRGBA DEFAULT_AMBIENT = new ColorRGBA(0.25f, 0.25f, 0.25f, 1); 
+    public static final ColorRGBA DEFAULT_AMBIENT = new ColorRGBA(0.25f, 0.25f, 0.25f, 1);
 
-    private VersionedHolder<Vector3f> lightDir = new VersionedHolder<Vector3f>();
-    
-    private ColorRGBA sunColor;
-    private DirectionalLight sun;
-    private ColorRGBA ambientColor;
-    private AmbientLight ambient;
+    protected VersionedHolder<Vector3f> lightDir = new VersionedHolder<Vector3f>();
+
+    protected ColorRGBA sunColor;
+    protected DirectionalLight sun;
+    protected ColorRGBA ambientColor;
+    protected AmbientLight ambient;
+
     private float timeOfDay = FastMath.atan2(1, 0.3f) / FastMath.PI;    
     private float inclination = FastMath.HALF_PI - FastMath.atan2(1, 0.4f);
     private float orientation = 0; //FastMath.HALF_PI; 
-    
-    private Node rootNode;  // the one we added the lights to
+
+    protected Node rootNode;  // the one we added the lights to
     
     public LightingState() {
         this(FastMath.atan2(1, 0.3f) / FastMath.PI);
