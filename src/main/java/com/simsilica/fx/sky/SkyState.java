@@ -115,9 +115,9 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
     protected ColorRGBA lightingColor;
 
     /**
-     * The flattening material.
+     * The flat material.
      */
-    protected Material flatteningMaterial;
+    protected Material flatMaterial;
 
     /**
      * The atmospheric material.
@@ -165,7 +165,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
         this.sunGeometry = new Geometry("Sun", sunSphere);
         this.skyGeometry = new Geometry("Sky", skyDome);
         this.skyGeometry.setModelBound(new BoundingSphere(Float.POSITIVE_INFINITY, Vector3f.ZERO));
-        this.skyGeometry.setMaterial(flatteningMaterial);
+        this.skyGeometry.setMaterial(flatMaterial);
         this.skyGeometry.setQueueBucket(Bucket.Sky);
         this.skyGeometry.setCullHint(CullHint.Never);
         this.groundGeometry = new Geometry("ground", ground);
@@ -232,7 +232,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
      */
     public ColorRGBA getGroundColor() {
         if (groundMaterial == null) return null;
-        final MatParam matParam = groundMaterial.getParam("Color");
+        final MatParam matParam = groundMaterial.getParam("GroundColor");
         return (ColorRGBA) matParam.getValue();
     }
 
@@ -241,7 +241,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
      */
     public void setGroundColor(final ColorRGBA groundColor) {
         if (groundMaterial == null) return;
-        groundMaterial.setParam("Color", VarType.Vector4, groundColor);
+        groundMaterial.setParam("GroundColor", VarType.Vector4, groundColor);
     }
 
     /**
@@ -262,25 +262,25 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
     }
 
     /**
-     * @return the flattening color.
+     * @return the flat color.
      */
-    public ColorRGBA getFlatteningColor() {
-        if (flatteningMaterial == null) return null;
-        final MatParam matParam = flatteningMaterial.getParam("Color");
+    public ColorRGBA getFlatColor() {
+        if (flatMaterial == null) return null;
+        final MatParam matParam = flatMaterial.getParam("Color");
         return (ColorRGBA) matParam.getValue();
     }
 
     /**
-     * @param flatColor the flattening color.
+     * @param flatColor the flat color.
      */
-    public void setFlatteningColor(final ColorRGBA flatColor) {
-        if (flatteningMaterial == null) return;
-        flatteningMaterial.setParam("Color", VarType.Vector4, flatColor);
+    public void setFlatColor(final ColorRGBA flatColor) {
+        if (flatMaterial == null) return;
+        flatMaterial.setParam("Color", VarType.Vector4, flatColor);
     }
 
     protected void resetMaterials() {
         if (isFlatShaded()) {
-            skyGeometry.setMaterial(flatteningMaterial);
+            skyGeometry.setMaterial(flatMaterial);
             sunGeometry.setCullHint(CullHint.Inherit);
             groundMaterial.setBoolean("UseScattering", false);
         } else {
@@ -325,8 +325,8 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
             sunGeometry.setMaterial(sunMaterial);
         }
 
-        if (flatteningMaterial == null) {
-            flatteningMaterial = guiGlobals.createMaterial(FLAT_COLOR.clone(), false).getMaterial();
+        if (flatMaterial == null) {
+            flatMaterial = guiGlobals.createMaterial(FLAT_COLOR.clone(), false).getMaterial();
         }
 
         if (atmosphericMaterial == null) {
@@ -356,6 +356,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
     @Override
     protected void cleanup(final Application app) {
         lightDir = null;
+        rootNode = null;
     }
 
     @Override
@@ -405,7 +406,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
         sunGeometry = cloner.clone(sunGeometry);
         groundGeometry = cloner.clone(groundGeometry);
         lightingColor = cloner.clone(lightingColor);
-        flatteningMaterial = cloner.clone(flatteningMaterial);
+        flatMaterial = cloner.clone(flatMaterial);
         atmosphericMaterial = cloner.clone(atmosphericMaterial);
         groundMaterial = cloner.clone(groundMaterial);
         sunMaterial = cloner.clone(sunMaterial);
@@ -419,7 +420,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
         capsule.write(sunGeometry, "sunGeometry", null);
         capsule.write(groundGeometry, "groundGeometry", null);
         capsule.write(lightingColor, "lightingColor", null);
-        capsule.write(flatteningMaterial, "flatteningMaterial", null);
+        capsule.write(flatMaterial, "flatMaterial", null);
         capsule.write(atmosphericMaterial, "atmosphericMaterial", null);
         capsule.write(groundMaterial, "groundMaterial", null);
         capsule.write(sunMaterial, "sunMaterial", null);
@@ -437,7 +438,7 @@ public class SkyState extends BaseAppState implements Savable, Cloneable, JmeClo
         sunGeometry = (Geometry) capsule.readSavable("sunGeometry", null);
         groundGeometry = (Geometry) capsule.readSavable("groundGeometry", null);
         lightingColor = (ColorRGBA) capsule.readSavable("lightingColor", null);
-        flatteningMaterial = (Material) capsule.readSavable("flatteningMaterial", null);
+        flatMaterial = (Material) capsule.readSavable("flatMaterial", null);
         atmosphericMaterial = (Material) capsule.readSavable("atmosphericMaterial", null);
         groundMaterial = (Material) capsule.readSavable("groundMaterial", null);
         sunMaterial = (Material) capsule.readSavable("sunMaterial", null);
