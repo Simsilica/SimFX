@@ -51,11 +51,12 @@ import java.nio.ShortBuffer;
 
 
 /**
- * A dome shape that has its base truncated such that it might represent the part of a sky sphere as seen from a point
- * on the ground.  The actual height of the dome will be outer radius - inner radius while the circumference of the dome
- * is length of the cord through the tip of inner radius.  The terms are chosen as if "outer radius" is the radius of
- * the atmosphere while "inner radius" is the radius of the planet.  It is important to note that the dome will then not
- * extend below the center surface position.  The theory is that a ground plane would be covering this extra area.
+ * A dome shape that has its base truncated such that it might represent the part of a skyGeometry sphere as seen from a
+ * point on the ground.  The actual height of the dome will be outer radius - inner radius while the circumference of
+ * the dome is length of the cord through the tip of inner radius.  The terms are chosen as if "outer radius" is the
+ * radius of the atmosphere while "inner radius" is the radius of the planet.  It is important to note that the dome
+ * will then not extend below the center surface position.  The theory is that a ground plane would be covering this
+ * extra area.
  *
  * @author Paul Speed
  */

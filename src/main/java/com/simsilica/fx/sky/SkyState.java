@@ -40,6 +40,11 @@ import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetManager;
 import com.jme3.bounding.BoundingSphere;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.OutputCapsule;
+import com.jme3.export.Savable;
 import com.jme3.material.MatParam;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
@@ -51,16 +56,20 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Sphere;
 import com.jme3.shader.VarType;
+import com.jme3.util.clone.Cloner;
+import com.jme3.util.clone.JmeCloneable;
 import com.simsilica.fx.LightingState;
 import com.simsilica.fx.geom.TruncatedDome;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.core.VersionedReference;
 import com.simsilica.lemur.event.BaseAppState;
 
+import java.io.IOException;
+
 /**
  * @author Paul Speed
  */
-public class SkyState extends BaseAppState {
+public class SkyState extends BaseAppState implements Savable, Cloneable, JmeCloneable {
 
     public static final int EARTH_RADIUS = 6378100;
 
@@ -68,25 +77,71 @@ public class SkyState extends BaseAppState {
     public static final ColorRGBA FLAT_COLOR = new ColorRGBA(0.5f, 0.5f, 1f, 1);
     public static final ColorRGBA GROUND_COLOR = new ColorRGBA(0.25f, 0.25f, 0.3f, 1);
 
+    /**
+     * The atmospheric parameters.
+     */
     protected AtmosphericParameters atmosphericParms;
+
+    /**
+     * The reference to light direction.
+     */
     protected VersionedReference<Vector3f> lightDir;
 
     protected Vector3f temp1;
 
+    /**
+     * The root node.
+     */
     protected Node rootNode;
 
-    protected Geometry sky;
-    protected Geometry sun;
-    protected Geometry groundDisc;
+    /**
+     * The sky geometry.
+     */
+    protected Geometry skyGeometry;
 
+    /**
+     * The sun geometry.
+     */
+    protected Geometry sunGeometry;
+
+    /**
+     * The ground geometry.
+     */
+    protected Geometry groundGeometry;
+
+    /**
+     * The lighting color.
+     */
     protected ColorRGBA lightingColor;
 
-    protected Material flatMaterial;
+    /**
+     * The flattening material.
+     */
+    protected Material flatteningMaterial;
+
+    /**
+     * The atmospheric material.
+     */
     protected Material atmosphericMaterial;
+
+    /**
+     * The ground material.
+     */
     protected Material groundMaterial;
+
+    /**
+     * The sun material.
+     */
     protected Material sunMaterial;
 
+    /**
+     * The dome inner radius.
+     */
     protected float domeInnerRadius;
+
+    /**
+     * The dome outer radius.
+     */
     protected float domeOuterRadius;
 
     protected boolean showGround;
@@ -107,102 +162,141 @@ public class SkyState extends BaseAppState {
         final TruncatedDome skyDome = new TruncatedDome(domeInnerRadius, domeOuterRadius, 100, 50, true);
         final TruncatedDome ground = new TruncatedDome(domeInnerRadius, domeOuterRadius, 100, 50, true);
 
-        this.sun = new Geometry("Sun", sunSphere);
-        this.sky = new Geometry("Sky", skyDome);
-        this.sky.setModelBound(new BoundingSphere(Float.POSITIVE_INFINITY, Vector3f.ZERO));
-        this.sky.setMaterial(flatMaterial);
-        this.sky.setQueueBucket(Bucket.Sky);
-        this.sky.setCullHint(CullHint.Never);
-        this.groundDisc = new Geometry("ground", ground);
-        this.groundDisc.rotate(FastMath.PI, 0, 0);
-        this.groundDisc.setQueueBucket(Bucket.Sky);
-        this.groundDisc.setCullHint(CullHint.Never);
+        this.sunGeometry = new Geometry("Sun", sunSphere);
+        this.skyGeometry = new Geometry("Sky", skyDome);
+        this.skyGeometry.setModelBound(new BoundingSphere(Float.POSITIVE_INFINITY, Vector3f.ZERO));
+        this.skyGeometry.setMaterial(flatteningMaterial);
+        this.skyGeometry.setQueueBucket(Bucket.Sky);
+        this.skyGeometry.setCullHint(CullHint.Never);
+        this.groundGeometry = new Geometry("ground", ground);
+        this.groundGeometry.rotate(FastMath.PI, 0, 0);
+        this.groundGeometry.setQueueBucket(Bucket.Sky);
+        this.groundGeometry.setCullHint(CullHint.Never);
     }
 
+    /**
+     * @return the atmospheric parameters.
+     */
     public AtmosphericParameters getAtmosphericParameters() {
         return atmosphericParms;
     }
 
+    /**
+     * @param node the parent node.
+     */
     public void setSkyParent(final Node node) {
         this.rootNode = node;
     }
 
+    /**
+     * @return the parent node.
+     */
     public Node getSkyParent() {
         return rootNode;
     }
 
+    /**
+     * @param flatShaded true if need to use flat shader.
+     */
     public void setFlatShaded(final boolean flatShaded) {
         if (isFlatShaded() == flatShaded) return;
         this.flatShaded = flatShaded;
         resetMaterials();
     }
 
+    /**
+     * @return true if need to use flat shader.
+     */
     public boolean isFlatShaded() {
         return flatShaded;
     }
 
-    public void setShowGroundDisc(final boolean showGround) {
-        if (isShowGroundDisc() == showGround) return;
+    /**
+     * @param showGround true if need to show ground geometry.
+     */
+    public void setShowGroundGeometry(final boolean showGround) {
+        if (isShowGroundGeometry() == showGround) return;
         this.showGround = showGround;
         resetGround();
     }
 
-    public boolean isShowGroundDisc() {
+    /**
+     * @return true if need to show ground geometry.
+     */
+    public boolean isShowGroundGeometry() {
         return showGround;
     }
 
+    /**
+     * @return the ground color.
+     */
     public ColorRGBA getGroundColor() {
         if (groundMaterial == null) return null;
         final MatParam matParam = groundMaterial.getParam("Color");
         return (ColorRGBA) matParam.getValue();
     }
 
+    /**
+     * @param groundColor the ground color.
+     */
     public void setGroundColor(final ColorRGBA groundColor) {
         if (groundMaterial == null) return;
         groundMaterial.setParam("Color", VarType.Vector4, groundColor);
     }
 
+    /**
+     * @return the sun color.
+     */
     public ColorRGBA getSunColor() {
         if (sunMaterial == null) return null;
         final MatParam matParam = sunMaterial.getParam("Color");
         return (ColorRGBA) matParam.getValue();
     }
 
+    /**
+     * @param sunColor the sun color.
+     */
     public void setSunColor(final ColorRGBA sunColor) {
         if (sunMaterial == null) return;
         sunMaterial.setParam("Color", VarType.Vector4, sunColor);
     }
 
-    public ColorRGBA getFlatColor() {
-        if (flatMaterial == null) return null;
-        final MatParam matParam = flatMaterial.getParam("Color");
+    /**
+     * @return the flattening color.
+     */
+    public ColorRGBA getFlatteningColor() {
+        if (flatteningMaterial == null) return null;
+        final MatParam matParam = flatteningMaterial.getParam("Color");
         return (ColorRGBA) matParam.getValue();
     }
 
-    public void setFlatColor(final ColorRGBA flatColor) {
-        if (flatMaterial == null) return;
-        flatMaterial.setParam("Color", VarType.Vector4, flatColor);
+    /**
+     * @param flatColor the flattening color.
+     */
+    public void setFlatteningColor(final ColorRGBA flatColor) {
+        if (flatteningMaterial == null) return;
+        flatteningMaterial.setParam("Color", VarType.Vector4, flatColor);
     }
 
     protected void resetMaterials() {
         if (isFlatShaded()) {
-            sky.setMaterial(flatMaterial);
-            sun.setCullHint(CullHint.Inherit);
+            skyGeometry.setMaterial(flatteningMaterial);
+            sunGeometry.setCullHint(CullHint.Inherit);
             groundMaterial.setBoolean("UseScattering", false);
         } else {
-            sky.setMaterial(atmosphericMaterial);
-            sun.setCullHint(CullHint.Never);
+            skyGeometry.setMaterial(atmosphericMaterial);
+            sunGeometry.setCullHint(CullHint.Never);
             groundMaterial.setBoolean("UseScattering", true);
         }
     }
 
     protected void resetGround() {
-        if (groundDisc == null) return;
+        if (groundGeometry == null) return;
         if (!isEnabled()) return;
-        if (isShowGroundDisc()) {
-            rootNode.attachChild(groundDisc);
+        if (isShowGroundGeometry()) {
+            rootNode.attachChild(groundGeometry);
         } else {
-            groundDisc.removeFromParent();
+            groundGeometry.removeFromParent();
         }
     }
 
@@ -228,11 +322,11 @@ public class SkyState extends BaseAppState {
 
         if (sunMaterial == null) {
             sunMaterial = guiGlobals.createMaterial(SUN_COLOR.clone(), false).getMaterial();
-            sun.setMaterial(sunMaterial);
+            sunGeometry.setMaterial(sunMaterial);
         }
 
-        if (flatMaterial == null) {
-            flatMaterial = guiGlobals.createMaterial(FLAT_COLOR.clone(), false).getMaterial();
+        if (flatteningMaterial == null) {
+            flatteningMaterial = guiGlobals.createMaterial(FLAT_COLOR.clone(), false).getMaterial();
         }
 
         if (atmosphericMaterial == null) {
@@ -247,11 +341,11 @@ public class SkyState extends BaseAppState {
             groundMaterial.setBoolean("FollowCamera", true);
             groundMaterial.setBoolean("UseScattering", true);
             groundMaterial.setFloat("GroundScale", 10);
-            groundDisc.setMaterial(groundMaterial);
+            groundGeometry.setMaterial(groundMaterial);
             atmosphericParms.applyGroundParameters(groundMaterial, true);
         }
 
-        sun.move(lightDirection.mult(-900, temp1));
+        sunGeometry.move(lightDirection.mult(-900, temp1));
 
         atmosphericParms.calculateGroundColor(ColorRGBA.White, Vector3f.UNIT_X, 1f, 0, lightingColor);
 
@@ -269,29 +363,88 @@ public class SkyState extends BaseAppState {
 
         if (lightDir.update()) {
             final Vector3f direction = lightDir.get();
-            sun.setLocalTranslation(direction.mult(-900, temp1));
+            sunGeometry.setLocalTranslation(direction.mult(-900, temp1));
             atmosphericParms.setLightDirection(direction);
             atmosphericParms.calculateGroundColor(ColorRGBA.White, Vector3f.UNIT_X, 1f, 0, lightingColor);
         }
 
         if (isFlatShaded()) {
-            sky.setLocalTranslation(getApplication().getCamera().getLocation());
+            skyGeometry.setLocalTranslation(getApplication().getCamera().getLocation());
         }
     }
 
     @Override
     protected void enable() {
         if (rootNode == null) return;
-        rootNode.attachChild(sky);
-        if (isShowGroundDisc()) {
-            rootNode.attachChild(groundDisc);
+        rootNode.attachChild(skyGeometry);
+        if (isShowGroundGeometry()) {
+            rootNode.attachChild(groundGeometry);
         }
     }
 
     @Override
     protected void disable() {
         if (rootNode == null) return;
-        sky.removeFromParent();
-        groundDisc.removeFromParent();
+        skyGeometry.removeFromParent();
+        groundGeometry.removeFromParent();
+    }
+
+    @Override
+    public Object jmeClone() {
+        try {
+            return super.clone();
+        } catch (final CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void cloneFields(final Cloner cloner, final Object original) {
+        temp1 = cloner.clone(temp1);
+        skyGeometry = cloner.clone(skyGeometry);
+        sunGeometry = cloner.clone(sunGeometry);
+        groundGeometry = cloner.clone(groundGeometry);
+        lightingColor = cloner.clone(lightingColor);
+        flatteningMaterial = cloner.clone(flatteningMaterial);
+        atmosphericMaterial = cloner.clone(atmosphericMaterial);
+        groundMaterial = cloner.clone(groundMaterial);
+        sunMaterial = cloner.clone(sunMaterial);
+        atmosphericParms = cloner.clone(atmosphericParms);
+    }
+
+    @Override
+    public void write(final JmeExporter exporter) throws IOException {
+        final OutputCapsule capsule = exporter.getCapsule(this);
+        capsule.write(skyGeometry, "skyGeometry", null);
+        capsule.write(sunGeometry, "sunGeometry", null);
+        capsule.write(groundGeometry, "groundGeometry", null);
+        capsule.write(lightingColor, "lightingColor", null);
+        capsule.write(flatteningMaterial, "flatteningMaterial", null);
+        capsule.write(atmosphericMaterial, "atmosphericMaterial", null);
+        capsule.write(groundMaterial, "groundMaterial", null);
+        capsule.write(sunMaterial, "sunMaterial", null);
+        capsule.write(atmosphericParms, "atmosphericParms", null);
+        capsule.write(flatShaded, "flatShaded", false);
+        capsule.write(showGround, "showGround", false);
+        capsule.write(domeInnerRadius, "domeInnerRadius", 0);
+        capsule.write(domeOuterRadius, "domeOuterRadius", 0);
+    }
+
+    @Override
+    public void read(final JmeImporter importer) throws IOException {
+        final InputCapsule capsule = importer.getCapsule(this);
+        skyGeometry = (Geometry) capsule.readSavable("skyGeometry", null);
+        sunGeometry = (Geometry) capsule.readSavable("sunGeometry", null);
+        groundGeometry = (Geometry) capsule.readSavable("groundGeometry", null);
+        lightingColor = (ColorRGBA) capsule.readSavable("lightingColor", null);
+        flatteningMaterial = (Material) capsule.readSavable("flatteningMaterial", null);
+        atmosphericMaterial = (Material) capsule.readSavable("atmosphericMaterial", null);
+        groundMaterial = (Material) capsule.readSavable("groundMaterial", null);
+        sunMaterial = (Material) capsule.readSavable("sunMaterial", null);
+        atmosphericParms = (AtmosphericParameters) capsule.readSavable("atmosphericParms", null);
+        flatShaded = capsule.readBoolean("flatShaded", false);
+        showGround = capsule.readBoolean("showGround", false);
+        domeInnerRadius = capsule.readFloat("domeInnerRadius", 0);
+        domeOuterRadius = capsule.readFloat("domeOuterRadius", 0);
     }
 }

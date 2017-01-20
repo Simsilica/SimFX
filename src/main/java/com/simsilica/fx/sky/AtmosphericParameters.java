@@ -62,6 +62,19 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
 
     public static final Material[] EMPTY_MATERIALS = new Material[0];
 
+    /**
+     * The objects to help with calculatings.
+     */
+    private Vector3f[] temp1;
+    private Vector3f temp2;
+    private Vector3f temp3;
+    private Vector3f temp4;
+    private Vector3f temp5;
+    private Vector3f temp6;
+    private Vector3f temp7;
+    private Vector3f temp8;
+    private Vector3f temp9;
+
     // This one will be common and global so we might as
     // well keep an instance around.
     private Material skyMaterial;
@@ -70,15 +83,18 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
     private Set<Material> groundMaterials;
 
     /**
-     * The 'position' of the light in the sky, ie: -direction.
+     * The 'position' of the light in the skyGeometry, ie: -direction.
      */
     private Vector3f sunPosition;
+
     private Vector3f waveLengths;
     private Vector3f waveLengthsPow4;
     private Vector3f invPow4WaveLengths;
     private Vector3f invPow4WavelengthsKrESun;
     private Vector4f scatteringConstants;
     private Vector3f kWavelengths4PI;
+
+    private int nSamples;
 
     private float lightIntensity;
     private float skyExposure;
@@ -92,12 +108,19 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
     private float kFlatteningSky;
     private float skyDomeRadius;
     private float planetRadius; // used for ground scale
-    private float skyFlattening = 0;
-
-    private int nSamples = 2;
-    private float fSamples = 2.0f;
+    private float skyFlattening;
+    private float fSamples;
 
     public AtmosphericParameters() {
+        this.temp1 = new Vector3f[]{new Vector3f(), new Vector3f(), new Vector3f()};
+        this.temp2 = new Vector3f();
+        this.temp3 = new Vector3f();
+        this.temp4 = new Vector3f();
+        this.temp5 = new Vector3f();
+        this.temp6 = new Vector3f();
+        this.temp7 = new Vector3f();
+        this.temp8 = new Vector3f();
+        this.temp9 = new Vector3f();
         this.groundMaterials = new HashSet<>();
         this.sunPosition = new Vector3f();
         this.waveLengths = new Vector3f();
@@ -111,6 +134,8 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         setRayleighConstant(0.0025f);
         setMieConstant(0.001f);
 
+        this.nSamples = 2;
+        this.fSamples = 2.0f;
         this.mpaFactor = -0.990f;
         this.sunPosition.set(0, 1, 0);
         this.lightIntensity = 20;
@@ -124,6 +149,7 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         this.skyDomeRadius = 10;
         this.planetRadius = 10;
         this.kFlatteningSky = 0.0f;
+        this.skyFlattening = 0;
     }
 
     public Material getSkyMaterial(final AssetManager assets) {
@@ -139,13 +165,18 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         return skyMaterial;
     }
 
+    /**
+     * Update all materials.
+     */
     protected void updateMaterials() {
+
         // Right now just the one potential
         if (skyMaterial != null) {
             updateSkyMaterial(skyMaterial);
         }
-        for (Material m : groundMaterials) {
-            applyGroundParameters(m);
+
+        for (final Material material : groundMaterials) {
+            applyGroundParameters(material);
         }
     }
 
@@ -168,6 +199,11 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         invPow4WavelengthsKrESun.z = invPow4WaveLengths.z * rESun;
     }
 
+    /**
+     * Update a skyGeometry material.
+     *
+     * @param material the skyGeometry material.
+     */
     protected void updateSkyMaterial(final Material material) {
         updatePackedStructures();
 
@@ -192,6 +228,12 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         material.setFloat("Flattening", skyFlattening);
     }
 
+    /**
+     * Apply ground parameters to a material.
+     *
+     * @param material   the ground material.
+     * @param autoUpdate true if need auto update.
+     */
     public void applyGroundParameters(final Material material, boolean autoUpdate) {
         applyGroundParameters(material);
         if (autoUpdate) {
@@ -199,6 +241,11 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         }
     }
 
+    /**
+     * Apply ground parameters to a material.
+     *
+     * @param material the ground material.
+     */
     public void applyGroundParameters(final Material material) {
         updatePackedStructures();
 
@@ -226,24 +273,33 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         updateMaterials();
     }
 
+    /**
+     * @return the average density scale.
+     */
     public float getAverageDensityScale() {
         return averageDensityScale;
     }
 
+    /**
+     * @param skyFlattening the skyGeometry flattening.
+     */
     public void setSkyFlattening(final float skyFlattening) {
         if (getSkyFlattening() == skyFlattening) return;
         this.skyFlattening = skyFlattening;
         updateMaterials();
     }
 
+    /**
+     * @return the skyGeometry flattening.
+     */
     public float getSkyFlattening() {
         return skyFlattening;
     }
 
     /**
-     * Sets the radius of the sky dome in geometry units. This is not based on the real world and is only based on the
-     * actual radius of the sky dome geometry and allows the shaders to properly scale points into the internal
-     * dimensions used by the shaders.
+     * Sets the radius of the skyGeometry dome in geometry units. This is not based on the real world and is only based
+     * on the actual radius of the skyGeometry dome geometry and allows the shaders to properly scale points into the
+     * internal dimensions used by the shaders.
      */
     public void setSkyDomeRadius(final float skyDomeRadius) {
         if (getSkyDomeRadius() == skyDomeRadius) return;
@@ -251,6 +307,9 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         updateMaterials();
     }
 
+    /**
+     * @return the skyGeometry dome radius.
+     */
     public float getSkyDomeRadius() {
         return skyDomeRadius;
     }
@@ -260,96 +319,145 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
      * example, if 1 unit = 1 meter then for earth the radius would be: 6378100 Changing this value will change how fast
      * ground points attenuate over distance.
      */
-    public void setPlanetRadius(float planetRadius) {
+    public void setPlanetRadius(final float planetRadius) {
         if (getPlanetRadius() == planetRadius) return;
         this.planetRadius = planetRadius;
         updateMaterials();
     }
 
+    /**
+     * @return the planet radius.
+     */
     public float getPlanetRadius() {
         return planetRadius;
     }
 
+    /**
+     * @param rayleighConstant the rayleigh constant.
+     */
     public final void setRayleighConstant(final float rayleighConstant) {
-        if (this.scatteringConstants.x == rayleighConstant) {
-            return;
-        }
+        if (getRayleighConstant() == rayleighConstant) return;
         this.scatteringConstants.x = rayleighConstant;
         this.scatteringConstants.y = rayleighConstant * 4 * FastMath.PI;
         updateMaterials();
     }
 
+    /**
+     * @return the rayleigh constant.
+     */
     public float getRayleighConstant() {
         return scatteringConstants.x;
     }
 
-    public final void setMieConstant(float mieConstant) {
-        if (this.scatteringConstants.z == mieConstant) {
-            return;
-        }
+    /**
+     * @param mieConstant the mie constant.
+     */
+    public final void setMieConstant(final float mieConstant) {
+        if (getMieConstant() == mieConstant) return;
         this.scatteringConstants.z = mieConstant;
         this.scatteringConstants.w = mieConstant * 4 * FastMath.PI;
         updateMaterials();
     }
 
+    /**
+     * @return the mie constant.
+     */
     public float getMieConstant() {
         return scatteringConstants.z;
     }
 
+    /**
+     * @param miePhaseAsymmetryFactor the mie phase asymmetry factor.
+     */
     public final void setMiePhaseAsymmetryFactor(float miePhaseAsymmetryFactor) {
         if (getMiePhaseAsymmetryFactor() == miePhaseAsymmetryFactor) return;
         this.mpaFactor = miePhaseAsymmetryFactor;
         updateMaterials();
     }
 
+    /**
+     * @return the mie phase asymmetry factor.
+     */
     public float getMiePhaseAsymmetryFactor() {
         return mpaFactor;
     }
 
-    public void setLightDirection(Vector3f dir) {
-        sunPosition.set(-dir.x, -dir.y, -dir.z);
+    /**
+     * @param lightDirection the light direction.
+     */
+    public void setLightDirection(final Vector3f lightDirection) {
+        sunPosition.set(-lightDirection.x, -lightDirection.y, -lightDirection.z);
     }
 
+    /**
+     * @return the light direction.
+     */
     public Vector3f getLightDirection() {
         return sunPosition.negate();
     }
 
+    /**
+     * @param lightIntensity the light intensity.
+     */
     public void setLightIntensity(final float lightIntensity) {
         if (getLightIntensity() == lightIntensity) return;
         this.lightIntensity = lightIntensity;
         updateMaterials();
     }
 
+    /**
+     * @return the light intensity.
+     */
     public float getLightIntensity() {
         return lightIntensity;
     }
 
+    /**
+     * @param skyExposure the skyGeometry exposure.
+     */
     public void setSkyExposure(final float skyExposure) {
         if (getSkyExposure() == skyExposure) return;
         this.skyExposure = skyExposure;
         updateMaterials();
     }
 
+    /**
+     * @return the skyGeometry exposure.
+     */
     public float getSkyExposure() {
         return skyExposure;
     }
 
+    /**
+     * @param groundExposure the ground exposure.
+     */
     public void setGroundExposure(float groundExposure) {
         if (getGroundExposure() == groundExposure) return;
         this.groundExposure = groundExposure;
         updateMaterials();
     }
 
+    /**
+     * @return the ground exposure.
+     */
     public float getGroundExposure() {
         return groundExposure;
     }
 
+    /**
+     * @param redWaveLength the red wave length.
+     */
     public void setRedWaveLength(final float redWaveLength) {
         if (getRedWaveLength() == redWaveLength) return;
         setWaveLengths(redWaveLength, waveLengths.y, waveLengths.z);
     }
 
-    public final void setWaveLengths(float red, float green, float blue) {
+    /**
+     * @param red   the red wave length.
+     * @param green the green wave length.
+     * @param blue  the blue wave length.
+     */
+    public final void setWaveLengths(final float red, final float green, final float blue) {
         waveLengths.set(red, green, blue);
         waveLengthsPow4.x = FastMath.pow(waveLengths.x, 4);
         waveLengthsPow4.y = FastMath.pow(waveLengths.y, 4);
@@ -360,24 +468,39 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         updateMaterials();
     }
 
+    /**
+     * @return the red wave length.
+     */
     public float getRedWaveLength() {
         return waveLengths.x;
     }
 
+    /**
+     * @param greenWaveLength the green wave length.
+     */
     public void setGreenWaveLength(final float greenWaveLength) {
         if (getGreenWaveLength() == greenWaveLength) return;
         setWaveLengths(waveLengths.x, greenWaveLength, waveLengths.z);
     }
 
+    /**
+     * @return the green wave length.
+     */
     public float getGreenWaveLength() {
         return waveLengths.y;
     }
 
+    /**
+     * @param blueWaveLength the blue wave length.
+     */
     public void setBlueWaveLength(final float blueWaveLength) {
         if (getBlueWaveLength() == blueWaveLength) return;
         setWaveLengths(waveLengths.x, waveLengths.y, blueWaveLength);
     }
 
+    /**
+     * @return the blue wave length.
+     */
     public float getBlueWaveLength() {
         return waveLengths.z;
     }
@@ -391,7 +514,8 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
 
         final float planetScale = innerRadius / planetRadius;
 
-        final Vector3f[] vector3fs = calculateGroundInAtmosphere(direction, distance * planetScale, elevation * planetScale, null);
+        final Vector3f[] vector3fs = calculateGroundInAtmosphere(direction, distance * planetScale,
+                elevation * planetScale, temp1);
 
         // return (vColor + color * vColor2) * m_Exposure;
         target.r = (vector3fs[0].x + color.r * vector3fs[1].x) * groundExposure;
@@ -402,52 +526,53 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
         return target;
     }
 
-    private float scale(float fCos) {
+    private float scale(final float fCos) {
         float x = 1.0f - fCos;
         return averageDensityScale * FastMath.exp(-0.00287f + x * (0.459f + x * (3.83f + x * (-6.80f + x * 5.25f))));
     }
 
-    public Vector3f[] calculateGroundInAtmosphere(Vector3f direction, final float distance, final float elevation,
+    public Vector3f[] calculateGroundInAtmosphere(final Vector3f direction, final float distance, final float elevation,
                                                   Vector3f[] target) {
 
         if (target == null) {
             target = new Vector3f[]{new Vector3f(), new Vector3f()};
         }
 
-        float scaleDepth = averageDensityScale;
-        float scaleOverScaleDepth = 1 / ((outerRadius - innerRadius) * averageDensityScale);
+        final Vector3f invWavelengthsKrESun = invPow4WavelengthsKrESun;
 
+        //float scaleDepth = averageDensityScale;
+        final float scaleOverScaleDepth = 1 / ((outerRadius - innerRadius) * averageDensityScale);
         //float innerRadius = innerRadius;
-        float radiusScale = 1 / (outerRadius - innerRadius);
-        Vector3f invWavelengthsKrESun = invPow4WavelengthsKrESun;
-        float mESun = scatteringConstants.z * lightIntensity;
+        final float radiusScale = 1 / (outerRadius - innerRadius);
+        final float mESun = scatteringConstants.z * lightIntensity;
+        final float rayLength = distance;
 
-        Vector3f camPos = new Vector3f(0, innerRadius + elevation, 0);
-
-        float rayLength = distance;
+        final Vector3f camPos = temp4.set(0, innerRadius + elevation, 0);
 
         // Setup to cast the ray sections for sample accumulation
         //Vector3f start = camPos;
 
         // Trying something... going to try doing the ray backwards
-        Vector3f start = camPos.add(direction.mult(distance));
-        direction = direction.mult(-1);
+        final Vector3f start = camPos.add(direction.mult(distance, temp2), temp3);
+        final Vector3f negateDirection = direction.mult(-1, temp2);
 
         float height = start.y;  // camera is always centered so y is good enough for elevation.
         float offset = innerRadius - height;
         float depth = FastMath.exp(scaleOverScaleDepth * offset);
-        float startAngle = direction.dot(start) / height;
+        float startAngle = negateDirection.dot(start) / height;
         float startOffset = depth * scale(startAngle);
 
         // Setup the loop stepping
         float sampleLength = rayLength / fSamples;
         float scaledLength = sampleLength * radiusScale;  // samppleLength * (1 / (outer - inner))
-        Vector3f sampleStep = direction.mult(sampleLength);
-        Vector3f samplePoint = start.add(sampleStep.mult(0.5f));
+
+        final Vector3f sampleStep = negateDirection.mult(sampleLength, temp5);
+        final Vector3f samplePoint = start.add(sampleStep.mult(0.5f, temp6), temp7);
+
         float scatter = 0.0f;
 
-        Vector3f accumulator = new Vector3f(0.0f, 0.0f, 0.0f);
-        Vector3f attenuation = new Vector3f(0.0f, 0.0f, 0.0f);
+        final Vector3f accumulator = temp6.set(0.0f, 0.0f, 0.0f);
+        final Vector3f attenuation = temp8.set(0.0f, 0.0f, 0.0f);
 
         for (int i = 0; i < nSamples; i++) {
 
@@ -458,7 +583,7 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
             depth = FastMath.exp(scaleOverScaleDepth * offset);
 
             float lightAngle = sunPosition.dot(samplePoint) / height;
-            float cameraAngle = direction.dot(samplePoint) / height;
+            float cameraAngle = negateDirection.dot(samplePoint) / height;
 
             scatter = startOffset + depth * (scale(lightAngle) - scale(cameraAngle));
 
@@ -470,7 +595,7 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
             attenuation.y = FastMath.exp(-scatter * kWavelengths4PI.y);
             attenuation.z = FastMath.exp(-scatter * kWavelengths4PI.z);
 
-            accumulator.addLocal(attenuation.mult(depth * scaledLength));
+            accumulator.addLocal(attenuation.mult(depth * scaledLength, temp9));
 
             // Step the sample point to the next value
             samplePoint.addLocal(sampleStep);
@@ -501,6 +626,15 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
 
     @Override
     public void cloneFields(final Cloner cloner, final Object original) {
+        temp1 = new Vector3f[]{new Vector3f(), new Vector3f(), new Vector3f()};
+        temp2 = new Vector3f();
+        temp3 = new Vector3f();
+        temp4 = new Vector3f();
+        temp5 = new Vector3f();
+        temp6 = new Vector3f();
+        temp7 = new Vector3f();
+        temp8 = new Vector3f();
+        temp9 = new Vector3f();
         skyMaterial = cloner.clone(skyMaterial);
         groundMaterials = cloner.clone(groundMaterials);
         sunPosition = cloner.clone(sunPosition);
@@ -518,7 +652,6 @@ public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
 
     @Override
     public void write(final JmeExporter exporter) throws IOException {
-
         final OutputCapsule capsule = exporter.getCapsule(this);
         capsule.write(skyMaterial, "skyMaterial", null);
         capsule.write(groundMaterials.toArray(new Material[groundMaterials.size()]), "groundMaterials", EMPTY_MATERIALS);
