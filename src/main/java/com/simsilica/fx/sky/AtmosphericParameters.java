@@ -37,439 +37,429 @@
 package com.simsilica.fx.sky;
 
 import com.jme3.asset.AssetManager;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.OutputCapsule;
+import com.jme3.export.Savable;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
+import com.jme3.util.clone.Cloner;
+import com.jme3.util.clone.JmeCloneable;
+
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
 
-
-
 /**
- *
- *
- *  @author    Paul Speed
+ * @author Paul Speed
  */
-public class AtmosphericParameters {
+public class AtmosphericParameters implements Cloneable, JmeCloneable, Savable {
+
+    public static final Material[] EMPTY_MATERIALS = new Material[0];
 
     // This one will be common and global so we might as
     // well keep an instance around.
     private Material skyMaterial;
- 
+
     // For auto-updating if the caller opts for it
-    private Set<Material> groundMaterials = new HashSet<Material>();
-       
+    private Set<Material> groundMaterials;
+
     /**
-     *  The 'position' of the light in the sky, ie:
-     *  -direction.
+     * The 'position' of the light in the sky, ie: -direction.
      */
-    private Vector3f sunPosition = new Vector3f();
- 
-    private float lightIntensity;   
+    private Vector3f sunPosition;
+    private Vector3f waveLengths;
+    private Vector3f waveLengthsPow4;
+    private Vector3f invPow4WaveLengths;
+    private Vector3f invPow4WavelengthsKrESun;
+    private Vector4f scatteringConstants;
+    private Vector3f kWavelengths4PI;
+
+    private float lightIntensity;
     private float skyExposure;
     private float groundExposure;
     private float skyGamma;
     private float groundGamma;
-    
-    private Vector3f wavelengths = new Vector3f();
-    private Vector3f wavelengthsPow4 = new Vector3f();
-    private Vector3f invPow4Wavelengths = new Vector3f();
-    private Vector3f invPow4WavelengthsKrESun = new Vector3f();
-    private Vector4f scatteringConstants = new Vector4f();
-    private Vector3f kWavelengths4PI = new Vector3f();
     private float mpaFactor;
-        
     private float innerRadius;
     private float outerRadius;
     private float averageDensityScale;
     private float kFlatteningSky;
     private float skyDomeRadius;
-    private float planetRadius; // used for ground scale 
- 
+    private float planetRadius; // used for ground scale
     private float skyFlattening = 0;
-    
+
+    private int nSamples = 2;
+    private float fSamples = 2.0f;
+
     public AtmosphericParameters() {
-        setWavelengths(0.650f, 0.570f, 0.475f);
+        this.groundMaterials = new HashSet<>();
+        this.sunPosition = new Vector3f();
+        this.waveLengths = new Vector3f();
+        this.waveLengthsPow4 = new Vector3f();
+        this.invPow4WaveLengths = new Vector3f();
+        this.invPow4WavelengthsKrESun = new Vector3f();
+        this.scatteringConstants = new Vector4f();
+        this.kWavelengths4PI = new Vector3f();
+
+        setWaveLengths(0.650f, 0.570f, 0.475f);
         setRayleighConstant(0.0025f);
         setMieConstant(0.001f);
+
         this.mpaFactor = -0.990f;
- 
-        this.sunPosition.set(0, 1, 0);       
+        this.sunPosition.set(0, 1, 0);
         this.lightIntensity = 20;
         this.skyExposure = 1;
         this.groundExposure = 1;
         this.skyGamma = 2.0f;
         this.groundGamma = 0;
-
         this.innerRadius = 10;
         this.outerRadius = 10.25f;
         this.averageDensityScale = 0.25f;
         this.skyDomeRadius = 10;
-        this.planetRadius = 10;  
+        this.planetRadius = 10;
         this.kFlatteningSky = 0.0f;
     }
-    
-    public Material getSkyMaterial( AssetManager assets ) {
- 
-        if( skyMaterial != null ) {
-            return skyMaterial;
-        }
-       
+
+    public Material getSkyMaterial(final AssetManager assets) {
+        if (skyMaterial != null) return skyMaterial;
+
         skyMaterial = new Material(assets, "MatDefs/SkyAtmospherics.j3md");
         skyMaterial.setVector3("SunPosition", sunPosition);
-        skyMaterial.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);        
-        skyMaterial.setVector3("KWavelengths4PI", kWavelengths4PI);        
+        skyMaterial.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);
+        skyMaterial.setVector3("KWavelengths4PI", kWavelengths4PI);
 
-        updateSkyMaterial(skyMaterial);        
+        updateSkyMaterial(skyMaterial);
 
-        return skyMaterial; 
+        return skyMaterial;
     }
 
     protected void updateMaterials() {
         // Right now just the one potential
-        if( skyMaterial != null ) {
+        if (skyMaterial != null) {
             updateSkyMaterial(skyMaterial);
         }
-        for( Material m : groundMaterials ) {
+        for (Material m : groundMaterials) {
             applyGroundParameters(m);
         }
     }
 
     protected void updatePackedStructures() {
+
         //vec3 attenuation = exp(-scatter * (m_InvWavelengths * r4PI + m4PI));
-        // K(wavelengths) * 4 * PI = m_InvWavelengths * r4PI + m4PI        
-        float r4PI = scatteringConstants.y; 
-        float m4PI = scatteringConstants.w; 
-        kWavelengths4PI.x = invPow4Wavelengths.x * r4PI + m4PI;            
-        kWavelengths4PI.y = invPow4Wavelengths.y * r4PI + m4PI;            
-        kWavelengths4PI.z = invPow4Wavelengths.z * r4PI + m4PI;
-                    
+        // K(waveLengths) * 4 * PI = m_InvWavelengths * r4PI + m4PI
+
+        float r4PI = scatteringConstants.y;
+        float m4PI = scatteringConstants.w;
+
+        kWavelengths4PI.x = invPow4WaveLengths.x * r4PI + m4PI;
+        kWavelengths4PI.y = invPow4WaveLengths.y * r4PI + m4PI;
+        kWavelengths4PI.z = invPow4WaveLengths.z * r4PI + m4PI;
+
         float rESun = scatteringConstants.x * lightIntensity;
-        invPow4WavelengthsKrESun.x = invPow4Wavelengths.x * rESun;
-        invPow4WavelengthsKrESun.y = invPow4Wavelengths.y * rESun;
-        invPow4WavelengthsKrESun.z = invPow4Wavelengths.z * rESun;
+
+        invPow4WavelengthsKrESun.x = invPow4WaveLengths.x * rESun;
+        invPow4WavelengthsKrESun.y = invPow4WaveLengths.y * rESun;
+        invPow4WavelengthsKrESun.z = invPow4WaveLengths.z * rESun;
     }
 
-    protected void updateSkyMaterial( Material m ) {    
+    protected void updateSkyMaterial(final Material material) {
         updatePackedStructures();
-        
-        m.setFloat("KmESun", scatteringConstants.z * lightIntensity); 
-        m.setFloat("Exposure", skyExposure);
-        m.setFloat("InnerRadius", innerRadius);
-        m.setFloat("RadiusScale", 1 / (outerRadius - innerRadius));
-        m.setFloat("Flattening", kFlatteningSky);
-        m.setFloat("PlanetScale", outerRadius / skyDomeRadius); 
-        m.setFloat("AverageDensityScale", averageDensityScale);
-        m.setFloat("InvAverageDensityHeight", 1 / ((outerRadius - innerRadius) * averageDensityScale));
- 
+
+        material.setFloat("KmESun", scatteringConstants.z * lightIntensity);
+        material.setFloat("Exposure", skyExposure);
+        material.setFloat("InnerRadius", innerRadius);
+        material.setFloat("RadiusScale", 1 / (outerRadius - innerRadius));
+        material.setFloat("Flattening", kFlatteningSky);
+        material.setFloat("PlanetScale", outerRadius / skyDomeRadius);
+        material.setFloat("AverageDensityScale", averageDensityScale);
+        material.setFloat("InvAverageDensityHeight", 1 / ((outerRadius - innerRadius) * averageDensityScale));
+
         float g = mpaFactor;
         float g2 = g * g;
         float phasePrefix1 = 1.5f * ((1.0f - g2) / (2.0f + g2));
         float phasePrefix2 = 1.0f + g2;
-        float phasePrefix3 = 2.0f * g;  
-        m.setFloat("PhasePrefix1", phasePrefix1);                
-        m.setFloat("PhasePrefix2", phasePrefix2);                
-        m.setFloat("PhasePrefix3", phasePrefix3);
+        float phasePrefix3 = 2.0f * g;
 
-        m.setFloat("Flattening", skyFlattening);         
+        material.setFloat("PhasePrefix1", phasePrefix1);
+        material.setFloat("PhasePrefix2", phasePrefix2);
+        material.setFloat("PhasePrefix3", phasePrefix3);
+        material.setFloat("Flattening", skyFlattening);
     }
 
-    public void applyGroundParameters( Material m, boolean autoUpdate ) {
-        applyGroundParameters(m);
-        if( autoUpdate ) {
-            groundMaterials.add(m);
+    public void applyGroundParameters(final Material material, boolean autoUpdate) {
+        applyGroundParameters(material);
+        if (autoUpdate) {
+            groundMaterials.add(material);
         }
     }
-    
-    public void applyGroundParameters( Material m ) {
+
+    public void applyGroundParameters(final Material material) {
         updatePackedStructures();
-        
+
         // We may have never set them before
-        m.setFloat("KmESun", scatteringConstants.z * lightIntensity); 
-        m.setVector3("SunPosition", sunPosition);
-        m.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);        
-        m.setVector3("KWavelengths4PI", kWavelengths4PI);
-                
-        m.setFloat("Exposure", groundExposure);
-        m.setFloat("InnerRadius", innerRadius);
-        m.setFloat("RadiusScale", 1 / (outerRadius - innerRadius));
-        m.setFloat("PlanetScale", innerRadius / planetRadius); 
-        m.setFloat("AverageDensityScale", averageDensityScale);
-        m.setFloat("InvAverageDensityHeight", 1 / ((outerRadius - innerRadius) * averageDensityScale));
+        material.setFloat("KmESun", scatteringConstants.z * lightIntensity);
+        material.setVector3("SunPosition", sunPosition);
+        material.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);
+        material.setVector3("KWavelengths4PI", kWavelengths4PI);
+
+        material.setFloat("Exposure", groundExposure);
+        material.setFloat("InnerRadius", innerRadius);
+        material.setFloat("RadiusScale", 1 / (outerRadius - innerRadius));
+        material.setFloat("PlanetScale", innerRadius / planetRadius);
+        material.setFloat("AverageDensityScale", averageDensityScale);
+        material.setFloat("InvAverageDensityHeight", 1 / ((outerRadius - innerRadius) * averageDensityScale));
     }
 
     /**
-     *  Sets the percentage elevation of the average atmospheric 
-     *  density.  For example, 0.25 is 25% of the distance between
-     *  sea level and the outer atmosphere.  This controls the
-     *  density curve of the atmosphere.
+     * Sets the percentage elevation of the average atmospheric density.  For example, 0.25 is 25% of the distance
+     * between sea level and the outer atmosphere.  This controls the density curve of the atmosphere.
      */
-    public void setAverageDensityScale( float f ) {
-        if( this.averageDensityScale == f ) {
-            return;
-        }
-        this.averageDensityScale = f;
+    public void setAverageDensityScale(final float averageDensityScale) {
+        if (getAverageDensityScale() == averageDensityScale) return;
+        this.averageDensityScale = averageDensityScale;
         updateMaterials();
     }
-    
+
     public float getAverageDensityScale() {
         return averageDensityScale;
-    } 
+    }
 
-    public void setSkyFlattening( float f ) {
-        this.skyFlattening = f;
+    public void setSkyFlattening(final float skyFlattening) {
+        if (getSkyFlattening() == skyFlattening) return;
+        this.skyFlattening = skyFlattening;
         updateMaterials();
     }
-    
+
     public float getSkyFlattening() {
         return skyFlattening;
     }
 
     /**
-     *  Sets the radius of the sky dome in geometry units.
-     *  This is not based on the real world and is only based
-     *  on the actual radius of the sky dome geometry and
-     *  allows the shaders to properly scale points into
-     *  the internal dimensions used by the shaders.
+     * Sets the radius of the sky dome in geometry units. This is not based on the real world and is only based on the
+     * actual radius of the sky dome geometry and allows the shaders to properly scale points into the internal
+     * dimensions used by the shaders.
      */
-    public void setSkyDomeRadius( float f ) {
-        if( this.skyDomeRadius == f ) {
-            return;
-        }
-        this.skyDomeRadius = f;
+    public void setSkyDomeRadius(final float skyDomeRadius) {
+        if (getSkyDomeRadius() == skyDomeRadius) return;
+        this.skyDomeRadius = skyDomeRadius;
         updateMaterials();
     }
-    
+
     public float getSkyDomeRadius() {
         return skyDomeRadius;
     }
- 
+
     /**
-     *  Controls the scale of ground-based scattering.  Set
-     *  this to the real planet radius in geometry units.
-     *  For example, if 1 unit = 1 meter then for earth the
-     *  radius would be: 6378100
-     *  Changing this value will change how fast ground
-     *  points attenuate over distance. 
-     */   
-    public void setPlanetRadius( float f ) {
-        if( this.planetRadius == f ) {
-            return;
-        }
-        this.planetRadius = f;
+     * Controls the scale of ground-based scattering.  Set this to the real planet radius in geometry units. For
+     * example, if 1 unit = 1 meter then for earth the radius would be: 6378100 Changing this value will change how fast
+     * ground points attenuate over distance.
+     */
+    public void setPlanetRadius(float planetRadius) {
+        if (getPlanetRadius() == planetRadius) return;
+        this.planetRadius = planetRadius;
         updateMaterials();
     }
-    
+
     public float getPlanetRadius() {
         return planetRadius;
     }
 
-    public final void setRayleighConstant( float f ) {
-        if( this.scatteringConstants.x == f ) {
+    public final void setRayleighConstant(final float rayleighConstant) {
+        if (this.scatteringConstants.x == rayleighConstant) {
             return;
         }
-        this.scatteringConstants.x = f;
-        this.scatteringConstants.y = f * 4 * FastMath.PI;        
+        this.scatteringConstants.x = rayleighConstant;
+        this.scatteringConstants.y = rayleighConstant * 4 * FastMath.PI;
         updateMaterials();
     }
-        
+
     public float getRayleighConstant() {
         return scatteringConstants.x;
     }
-    
-    public final void setMieConstant( float f ) {
-        if( this.scatteringConstants.z == f ) {
+
+    public final void setMieConstant(float mieConstant) {
+        if (this.scatteringConstants.z == mieConstant) {
             return;
         }
-        this.scatteringConstants.z = f;
-        this.scatteringConstants.w = f * 4 * FastMath.PI;        
+        this.scatteringConstants.z = mieConstant;
+        this.scatteringConstants.w = mieConstant * 4 * FastMath.PI;
         updateMaterials();
     }
-        
+
     public float getMieConstant() {
         return scatteringConstants.z;
     }
-    
-    public final void setMiePhaseAsymmetryFactor( float f ) {
-        if( this.mpaFactor == f ) {
-            return;
-        }
-        this.mpaFactor = f;
+
+    public final void setMiePhaseAsymmetryFactor(float miePhaseAsymmetryFactor) {
+        if (getMiePhaseAsymmetryFactor() == miePhaseAsymmetryFactor) return;
+        this.mpaFactor = miePhaseAsymmetryFactor;
         updateMaterials();
     }
-    
+
     public float getMiePhaseAsymmetryFactor() {
         return mpaFactor;
     }
- 
-    public void setLightDirection( Vector3f dir ) {
+
+    public void setLightDirection(Vector3f dir) {
         sunPosition.set(-dir.x, -dir.y, -dir.z);
     }
-    
+
     public Vector3f getLightDirection() {
         return sunPosition.negate();
     }
-    
-    public void setLightIntensity( float f ) {
-        if( this.lightIntensity == f ) {
-            return;
-        }
-        this.lightIntensity = f;
+
+    public void setLightIntensity(final float lightIntensity) {
+        if (getLightIntensity() == lightIntensity) return;
+        this.lightIntensity = lightIntensity;
         updateMaterials();
     }
-    
+
     public float getLightIntensity() {
         return lightIntensity;
     }
-    
-    public void setSkyExposure( float f ) {
-        if( this.skyExposure == f ) {
-            return;
-        }
-        this.skyExposure = f;
-        updateMaterials();        
+
+    public void setSkyExposure(final float skyExposure) {
+        if (getSkyExposure() == skyExposure) return;
+        this.skyExposure = skyExposure;
+        updateMaterials();
     }
-    
+
     public float getSkyExposure() {
         return skyExposure;
     }
 
-    public void setGroundExposure( float f ) {
-        if( this.groundExposure == f ) {
-            return;
-        }
-        this.groundExposure = f;
-        updateMaterials();        
+    public void setGroundExposure(float groundExposure) {
+        if (getGroundExposure() == groundExposure) return;
+        this.groundExposure = groundExposure;
+        updateMaterials();
     }
-    
+
     public float getGroundExposure() {
         return groundExposure;
     }
-    
-    public final void setWavelengths( float r, float g, float b ) {
-        wavelengths.set(r, g, b);
-        wavelengthsPow4.x = FastMath.pow(wavelengths.x, 4);
-        wavelengthsPow4.y = FastMath.pow(wavelengths.y, 4);
-        wavelengthsPow4.z = FastMath.pow(wavelengths.z, 4);
-        invPow4Wavelengths.x = 1 / wavelengthsPow4.x;
-        invPow4Wavelengths.y = 1 / wavelengthsPow4.y;
-        invPow4Wavelengths.z = 1 / wavelengthsPow4.z;
-        updateMaterials();               
+
+    public void setRedWaveLength(final float redWaveLength) {
+        if (getRedWaveLength() == redWaveLength) return;
+        setWaveLengths(redWaveLength, waveLengths.y, waveLengths.z);
     }
-    
-    public void setRedWavelength( float f ) {
-        if( this.wavelengths.x == f ) {
-            return;
-        }
-        setWavelengths(f, wavelengths.y, wavelengths.z); 
+
+    public final void setWaveLengths(float red, float green, float blue) {
+        waveLengths.set(red, green, blue);
+        waveLengthsPow4.x = FastMath.pow(waveLengths.x, 4);
+        waveLengthsPow4.y = FastMath.pow(waveLengths.y, 4);
+        waveLengthsPow4.z = FastMath.pow(waveLengths.z, 4);
+        invPow4WaveLengths.x = 1 / waveLengthsPow4.x;
+        invPow4WaveLengths.y = 1 / waveLengthsPow4.y;
+        invPow4WaveLengths.z = 1 / waveLengthsPow4.z;
+        updateMaterials();
     }
-    
-    public float getRedWavelength() {
-        return wavelengths.x;
+
+    public float getRedWaveLength() {
+        return waveLengths.x;
     }
-    
-    public void setGreenWavelength( float f ) {
-        if( this.wavelengths.y == f ) {
-            return;
-        }
-        setWavelengths(wavelengths.x, f, wavelengths.z); 
+
+    public void setGreenWaveLength(final float greenWaveLength) {
+        if (getGreenWaveLength() == greenWaveLength) return;
+        setWaveLengths(waveLengths.x, greenWaveLength, waveLengths.z);
     }
-    
-    public float getGreenWavelength() {
-        return wavelengths.y;
+
+    public float getGreenWaveLength() {
+        return waveLengths.y;
     }
-    
-    public void setBlueWavelength( float f ) {
-        if( this.wavelengths.z == f ) {
-            return;
-        }
-        setWavelengths(wavelengths.x, wavelengths.y, f); 
+
+    public void setBlueWaveLength(final float blueWaveLength) {
+        if (getBlueWaveLength() == blueWaveLength) return;
+        setWaveLengths(waveLengths.x, waveLengths.y, blueWaveLength);
     }
-    
-    public float getBlueWavelength() {
-        return wavelengths.z;
+
+    public float getBlueWaveLength() {
+        return waveLengths.z;
     }
- 
-    public ColorRGBA calculateGroundColor( ColorRGBA color, Vector3f direction, float distance, float elevation, ColorRGBA target ) {
-        if( target == null ) {
+
+    public ColorRGBA calculateGroundColor(final ColorRGBA color, final Vector3f direction, final float distance,
+                                          final float elevation, ColorRGBA target) {
+
+        if (target == null) {
             target = new ColorRGBA(0, 0, 0, 1);
         }
-        
-        float planetScale = innerRadius / planetRadius;        
-        
-        Vector3f[] parms = calculateGroundInAtmosphere(direction, distance * planetScale, elevation * planetScale, null);
-        
-        // return (vColor + color * vColor2) * m_Exposure;
-        target.r = (parms[0].x + color.r * parms[1].x) * groundExposure;
-        target.g = (parms[0].y + color.g * parms[1].y) * groundExposure;
-        target.b = (parms[0].z + color.b * parms[1].z) * groundExposure;
-        target.a = color.a;       
-        
-        return target;
-    }        
- 
-    private int nSamples = 2;
-    private float fSamples = 2.0f;
 
-    private float scale( float fCos ) {
-        float x = 1.0f - fCos;
-        return averageDensityScale * FastMath.exp(-0.00287f + x*(0.459f + x*(3.83f + x*(-6.80f + x*5.25f))));
+        final float planetScale = innerRadius / planetRadius;
+
+        final Vector3f[] vector3fs = calculateGroundInAtmosphere(direction, distance * planetScale, elevation * planetScale, null);
+
+        // return (vColor + color * vColor2) * m_Exposure;
+        target.r = (vector3fs[0].x + color.r * vector3fs[1].x) * groundExposure;
+        target.g = (vector3fs[0].y + color.g * vector3fs[1].y) * groundExposure;
+        target.b = (vector3fs[0].z + color.b * vector3fs[1].z) * groundExposure;
+        target.a = color.a;
+
+        return target;
     }
-  
-    public Vector3f[] calculateGroundInAtmosphere( Vector3f direction, float distance, float elevation, Vector3f[] target ) {
-        if( target == null ) {
-            target = new Vector3f[] { new Vector3f(), new Vector3f() };
+
+    private float scale(float fCos) {
+        float x = 1.0f - fCos;
+        return averageDensityScale * FastMath.exp(-0.00287f + x * (0.459f + x * (3.83f + x * (-6.80f + x * 5.25f))));
+    }
+
+    public Vector3f[] calculateGroundInAtmosphere(Vector3f direction, final float distance, final float elevation,
+                                                  Vector3f[] target) {
+
+        if (target == null) {
+            target = new Vector3f[]{new Vector3f(), new Vector3f()};
         }
-        
+
         float scaleDepth = averageDensityScale;
         float scaleOverScaleDepth = 1 / ((outerRadius - innerRadius) * averageDensityScale);
-        
+
         //float innerRadius = innerRadius;
         float radiusScale = 1 / (outerRadius - innerRadius);
         Vector3f invWavelengthsKrESun = invPow4WavelengthsKrESun;
         float mESun = scatteringConstants.z * lightIntensity;
-        
+
         Vector3f camPos = new Vector3f(0, innerRadius + elevation, 0);
-        
+
         float rayLength = distance;
-        
+
         // Setup to cast the ray sections for sample accumulation
         //Vector3f start = camPos;
-    
+
         // Trying something... going to try doing the ray backwards
         Vector3f start = camPos.add(direction.mult(distance));
         direction = direction.mult(-1);
-    
+
         float height = start.y;  // camera is always centered so y is good enough for elevation.
         float offset = innerRadius - height;
         float depth = FastMath.exp(scaleOverScaleDepth * offset);
         float startAngle = direction.dot(start) / height;
         float startOffset = depth * scale(startAngle);
-    
+
         // Setup the loop stepping
         float sampleLength = rayLength / fSamples;
         float scaledLength = sampleLength * radiusScale;  // samppleLength * (1 / (outer - inner))
         Vector3f sampleStep = direction.mult(sampleLength);
-        Vector3f samplePoint = start.add(sampleStep.mult(0.5f));  
+        Vector3f samplePoint = start.add(sampleStep.mult(0.5f));
         float scatter = 0.0f;
- 
+
         Vector3f accumulator = new Vector3f(0.0f, 0.0f, 0.0f);
         Vector3f attenuation = new Vector3f(0.0f, 0.0f, 0.0f);
-        
-        for( int i = 0; i < nSamples; i++ ) {
- 
+
+        for (int i = 0; i < nSamples; i++) {
+
             // Ground points are generally always close enough that we pretend
             // the world is flat.   
-            height = samplePoint.y;                                 
+            height = samplePoint.y;
             offset = innerRadius - height;
             depth = FastMath.exp(scaleOverScaleDepth * offset);
-  
+
             float lightAngle = sunPosition.dot(samplePoint) / height;
             float cameraAngle = direction.dot(samplePoint) / height;
- 
+
             scatter = startOffset + depth * (scale(lightAngle) - scale(cameraAngle));
 
             // m_InvWaveLength = 1 / (waveLength ^ 4)
@@ -479,26 +469,124 @@ public class AtmosphericParameters {
             attenuation.x = FastMath.exp(-scatter * kWavelengths4PI.x);
             attenuation.y = FastMath.exp(-scatter * kWavelengths4PI.y);
             attenuation.z = FastMath.exp(-scatter * kWavelengths4PI.z);
- 
+
             accumulator.addLocal(attenuation.mult(depth * scaledLength));
-        
+
             // Step the sample point to the next value
             samplePoint.addLocal(sampleStep);
         }
 
         // Now set the out parameters
-    
+
         // General attenuation... we stick it in the Mie color because I'm lazy
-        target[1].set(attenuation); 
-    
+        target[1].set(attenuation);
+
         // Rayleigh color
         // rColor = accumulator * (invWavelengthsKrESun + mESun);
-        target[0].x = accumulator.x * (invWavelengthsKrESun.x + mESun);               
-        target[0].y = accumulator.y * (invWavelengthsKrESun.y + mESun);               
-        target[0].z = accumulator.z * (invWavelengthsKrESun.z + mESun);               
-        
+        target[0].x = accumulator.x * (invWavelengthsKrESun.x + mESun);
+        target[0].y = accumulator.y * (invWavelengthsKrESun.y + mESun);
+        target[0].z = accumulator.z * (invWavelengthsKrESun.z + mESun);
+
         return target;
-    }       
+    }
+
+    @Override
+    public Object jmeClone() {
+        try {
+            return super.clone();
+        } catch (final CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void cloneFields(final Cloner cloner, final Object original) {
+        skyMaterial = cloner.clone(skyMaterial);
+        groundMaterials = cloner.clone(groundMaterials);
+        sunPosition = cloner.clone(sunPosition);
+        waveLengths = cloner.clone(waveLengths);
+        waveLengthsPow4 = cloner.clone(waveLengthsPow4);
+        invPow4WaveLengths = cloner.clone(invPow4WaveLengths);
+        invPow4WavelengthsKrESun = cloner.clone(invPow4WavelengthsKrESun);
+        scatteringConstants = cloner.clone(scatteringConstants);
+        kWavelengths4PI = cloner.clone(kWavelengths4PI);
+
+        skyMaterial.setVector3("SunPosition", sunPosition);
+        skyMaterial.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);
+        skyMaterial.setVector3("KWavelengths4PI", kWavelengths4PI);
+    }
+
+    @Override
+    public void write(final JmeExporter exporter) throws IOException {
+
+        final OutputCapsule capsule = exporter.getCapsule(this);
+        capsule.write(skyMaterial, "skyMaterial", null);
+        capsule.write(groundMaterials.toArray(new Material[groundMaterials.size()]), "groundMaterials", EMPTY_MATERIALS);
+        capsule.write(sunPosition, "sunPosition", null);
+        capsule.write(waveLengths, "waveLengths", null);
+        capsule.write(waveLengthsPow4, "waveLengthsPow4", null);
+        capsule.write(invPow4WaveLengths, "invPow4WaveLengths", null);
+        capsule.write(invPow4WavelengthsKrESun, "invPow4WavelengthsKrESun", null);
+        capsule.write(scatteringConstants, "scatteringConstants", null);
+        capsule.write(kWavelengths4PI, "kWavelengths4PI", null);
+        capsule.write(lightIntensity, "lightIntensity", 0);
+        capsule.write(skyExposure, "skyExposure", 0);
+        capsule.write(groundExposure, "groundExposure", 0);
+        capsule.write(skyGamma, "skyGamma", 0);
+        capsule.write(groundGamma, "groundGamma", 0);
+        capsule.write(mpaFactor, "mpaFactor", 0);
+        capsule.write(innerRadius, "innerRadius", 0);
+        capsule.write(outerRadius, "outerRadius", 0);
+        capsule.write(averageDensityScale, "averageDensityScale", 0);
+        capsule.write(kFlatteningSky, "kFlatteningSky", 0);
+        capsule.write(skyDomeRadius, "skyDomeRadius", 0);
+        capsule.write(planetRadius, "planetRadius", 0);
+        capsule.write(skyFlattening, "skyFlattening", 0);
+    }
+
+    @Override
+    public void read(final JmeImporter importer) throws IOException {
+
+        final InputCapsule capsule = importer.getCapsule(this);
+        final Savable[] materials = capsule.readSavableArray("groundMaterials", EMPTY_MATERIALS);
+
+        for (final Savable material : materials) {
+            groundMaterials.add((Material) material);
+        }
+
+        skyMaterial = (Material) capsule.readSavable("skyMaterial", null);
+        sunPosition = (Vector3f) capsule.readSavable("sunPosition", null);
+        waveLengths = (Vector3f) capsule.readSavable("waveLengths", null);
+        waveLengthsPow4 = (Vector3f) capsule.readSavable("waveLengthsPow4", null);
+        invPow4WaveLengths = (Vector3f) capsule.readSavable("invPow4WaveLengths", null);
+        invPow4WavelengthsKrESun = (Vector3f) capsule.readSavable("invPow4WavelengthsKrESun", null);
+        scatteringConstants = (Vector4f) capsule.readSavable("scatteringConstants", null);
+        kWavelengths4PI = (Vector3f) capsule.readSavable("kWavelengths4PI", null);
+
+        lightIntensity = capsule.readFloat("lightIntensity", 0F);
+        skyExposure = capsule.readFloat("skyExposure", 0F);
+        groundExposure = capsule.readFloat("groundExposure", 0F);
+        skyGamma = capsule.readFloat("skyGamma", 0F);
+        groundGamma = capsule.readFloat("groundGamma", 0F);
+        mpaFactor = capsule.readFloat("mpaFactor", 0F);
+        innerRadius = capsule.readFloat("innerRadius", 0F);
+        outerRadius = capsule.readFloat("outerRadius", 0F);
+        averageDensityScale = capsule.readFloat("averageDensityScale", 0F);
+        kFlatteningSky = capsule.readFloat("kFlatteningSky", 0F);
+        skyDomeRadius = capsule.readFloat("skyDomeRadius", 0F);
+        planetRadius = capsule.readFloat("planetRadius", 0F);
+        skyFlattening = capsule.readFloat("skyFlattening", 0F);
+
+        skyMaterial.setVector3("SunPosition", sunPosition);
+        skyMaterial.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);
+        skyMaterial.setVector3("KWavelengths4PI", kWavelengths4PI);
+
+        for (final Material material : groundMaterials) {
+            material.setVector3("SunPosition", sunPosition);
+            material.setVector3("InvWavelengthsKrESun", invPow4WavelengthsKrESun);
+            material.setVector3("KWavelengths4PI", kWavelengths4PI);
+        }
+    }
 }
 
 

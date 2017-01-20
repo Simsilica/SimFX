@@ -36,81 +36,84 @@
 
 package com.simsilica.fx.geom;
 
+import com.jme3.export.InputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.OutputCapsule;
 import com.jme3.math.FastMath;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer.Type;
 import com.jme3.util.BufferUtils;
+
+import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
 
 /**
- *  A dome shape that has its base truncated such that it
- *  might represent the part of a sky sphere as seen from
- *  a point on the ground.  The actual height of the dome
- *  will be outer radius - inner radius while the circumference
- *  of the dome is length of the cord through the tip of
- *  inner radius.  The terms are chosen as
- *  if "outer radius" is the radius of the atmosphere while
- *  "inner radius" is the radius of the planet.  It is 
- *  important to note that the dome will then not extend
- *  below the center surface position.  The theory is that
- *  a ground plane would be covering this extra area.
+ * A dome shape that has its base truncated such that it might represent the part of a sky sphere as seen from a point
+ * on the ground.  The actual height of the dome will be outer radius - inner radius while the circumference of the dome
+ * is length of the cord through the tip of inner radius.  The terms are chosen as if "outer radius" is the radius of
+ * the atmosphere while "inner radius" is the radius of the planet.  It is important to note that the dome will then not
+ * extend below the center surface position.  The theory is that a ground plane would be covering this extra area.
  *
- *  @author    Paul Speed
+ * @author Paul Speed
  */
 public class TruncatedDome extends Mesh {
 
     private int radials;
     private int slices;
-    
+
     private float innerRadius;
     private float outerRadius;
     private float baseRadius;
-    
+
     private boolean inside;
-    
-    public TruncatedDome( float innerRadius, float outerRadius, 
-                          int radials, int slices, boolean inside ) {
+
+    public TruncatedDome() {
+    }
+
+    public TruncatedDome(float innerRadius, float outerRadius,
+                         int radials, int slices, boolean inside) {
         updateGeometry(innerRadius, outerRadius, radials, slices, inside);
     }
-    
+
     public float getBaseRadius() {
         return baseRadius;
     }
-    
-    public final void updateGeometry( float innerRadius, float outerRadius, 
-                                int radials, int slices, boolean inside ) {
-        if( this.innerRadius == innerRadius && this.outerRadius == outerRadius
-            && this.radials == radials && this.slices == slices && this.inside == inside ) {
+
+    public final void updateGeometry(float innerRadius, float outerRadius,
+                                     int radials, int slices, boolean inside) {
+        if (this.innerRadius == innerRadius && this.outerRadius == outerRadius
+                && this.radials == radials && this.slices == slices && this.inside == inside) {
             return;
-        }                                                                                        
-                                                                                        
+        }
+
         this.innerRadius = innerRadius;
         this.outerRadius = outerRadius;
         this.radials = radials;
         this.slices = slices;
         this.inside = inside;
- 
+
         // How many vertexes will we need?
         int radialVertCount = radials + 1; // for the seam
-        int elevVertCount = slices; 
+        int elevVertCount = slices;
         int vertCount = radialVertCount * elevVertCount + 1;
         int quadCount = radials * elevVertCount;
         int triCount = 2 * quadCount + radials;
 
         // Make sure we have buffers the proper size
-        FloatBuffer pb = makeFloatBuffer(Type.Position, 3, vertCount);  
-        FloatBuffer nb = makeFloatBuffer(Type.Normal, 3, vertCount);  
-        FloatBuffer tb = makeFloatBuffer(Type.TexCoord, 3, vertCount);  
- 
+        FloatBuffer pb = makeFloatBuffer(Type.Position, 3, vertCount);
+        FloatBuffer nb = makeFloatBuffer(Type.Normal, 3, vertCount);
+        FloatBuffer tb = makeFloatBuffer(Type.TexCoord, 3, vertCount);
+
         // Overlap the first and last for the seam       
         float[] radialSines = new float[radialVertCount];
         float[] radialCosines = new float[radialVertCount];
         float aDelta = FastMath.TWO_PI / radials;
-        for( int i = 0; i < radialVertCount; i++ ) {
-            radialSines[i] = FastMath.sin(i * aDelta);      
-            radialCosines[i] = FastMath.cos(i * aDelta);      
+        for (int i = 0; i < radialVertCount; i++) {
+            radialSines[i] = FastMath.sin(i * aDelta);
+            radialCosines[i] = FastMath.cos(i * aDelta);
         }
 
         // For slices we want to try to maximize surface area
@@ -127,98 +130,98 @@ public class TruncatedDome extends Mesh {
         // moment and I don't feel like doing quadratic equations for
         // that.
         float[] sliceAngles = new float[elevVertCount];
-        
+
         // For the center point on the base, the cos of the base
         // angle is innerRadius and the hypotenuse is the outerRadius.
         // So... angle is...
         sliceAngles[0] = FastMath.HALF_PI - FastMath.acos(innerRadius / outerRadius);
         baseRadius = FastMath.cos(sliceAngles[0]) * outerRadius;
-        for( int i = 1; i < elevVertCount; i++ ) {
-            float t = 1.0f - ((float)i / elevVertCount);
+        for (int i = 1; i < elevVertCount; i++) {
+            float t = 1.0f - ((float) i / elevVertCount);
             t = t * t;
             float r = baseRadius * t;
             sliceAngles[i] = FastMath.acos(r / outerRadius);
         }
- 
-        for( int i = 0; i < elevVertCount; i++ ) {
+
+        for (int i = 0; i < elevVertCount; i++) {
             float sliceCos = FastMath.cos(sliceAngles[i]);
             float sliceSin = FastMath.sin(sliceAngles[i]);
-            
-            for( int j = 0; j < radialVertCount; j++ ) {
+
+            for (int j = 0; j < radialVertCount; j++) {
                 float x = radialCosines[j] * sliceCos;
                 float y = sliceSin;
                 float z = radialSines[j] * sliceCos;
- 
+
                 // Should be a unit vector
-                if( inside ) {
+                if (inside) {
                     nb.put(-x).put(-y).put(-z);
-                } else { 
+                } else {
                     nb.put(x).put(y).put(z);
                 }
-                
+
                 // Now project it for the position... subtracting inner
                 // radius
                 pb.put(x * outerRadius);
                 pb.put(y * outerRadius - innerRadius);
                 pb.put(z * outerRadius);
-            }                
+            }
         }
 
         // Now add the pole
         nb.put(0).put(inside ? -1 : 1).put(0);
         pb.put(0).put(outerRadius - innerRadius).put(0);
-        
+
         // Now we need to setup the index buffer
-        ShortBuffer ib = makeShortBuffer(Type.Index, 3, triCount);  
-        for( int i = 0; i < elevVertCount - 1; i++ ) {
+        ShortBuffer ib = makeShortBuffer(Type.Index, 3, triCount);
+        for (int i = 0; i < elevVertCount - 1; i++) {
             int base, next;
-            if( inside ) {
+            if (inside) {
                 base = i * radialVertCount;
                 next = (i + 1) * radialVertCount;
             } else {
                 next = i * radialVertCount;
                 base = (i + 1) * radialVertCount;
-            }   
-            for( int j = 0; j < radialVertCount - 1; j++ ) {
-                ib.put((short)(base + j));
-                ib.put((short)(base + j + 1));
-                ib.put((short)(next + j + 1));
-                ib.put((short)(base + j));
-                ib.put((short)(next + j + 1));
-                ib.put((short)(next + j));
+            }
+            for (int j = 0; j < radialVertCount - 1; j++) {
+                ib.put((short) (base + j));
+                ib.put((short) (base + j + 1));
+                ib.put((short) (next + j + 1));
+                ib.put((short) (base + j));
+                ib.put((short) (next + j + 1));
+                ib.put((short) (next + j));
             }
         }
-        
+
         // Now close the pole
         int base = (elevVertCount - 1) * radialVertCount;
         int tip = elevVertCount * radialVertCount;
-        for( int j = 0; j < radialVertCount - 1; j++ ) {
-            if( inside ) {
-                ib.put((short)(base + j)); 
-                ib.put((short)(base + j + 1));                 
-                ib.put((short)(tip)); 
+        for (int j = 0; j < radialVertCount - 1; j++) {
+            if (inside) {
+                ib.put((short) (base + j));
+                ib.put((short) (base + j + 1));
+                ib.put((short) (tip));
             } else {
-                ib.put((short)(base + j)); 
-                ib.put((short)(tip)); 
-                ib.put((short)(base + j + 1)); 
-            }   
+                ib.put((short) (base + j));
+                ib.put((short) (tip));
+                ib.put((short) (base + j + 1));
+            }
         }
- 
+
         setBuffer(Type.Position, 3, pb);
         setBuffer(Type.Normal, 3, nb);
         setBuffer(Type.Index, 3, ib);
-        
-        updateBound();       
+
+        updateBound();
     }
 
     protected FloatBuffer makeFloatBuffer(Type type, int components, int size) {
         FloatBuffer result = getFloatBuffer(type);
-        if( result != null && result.capacity() == components * size ) {
+        if (result != null && result.capacity() == components * size) {
             // Current is good enough
             result.clear();
             return result;
         }
-        
+
         // Else we need to create one
         result = BufferUtils.createFloatBuffer(components * size);
         return result;
@@ -226,15 +229,39 @@ public class TruncatedDome extends Mesh {
 
     protected ShortBuffer makeShortBuffer(Type type, int components, int size) {
         ShortBuffer result = getShortBuffer(type);
-        if( result != null && result.capacity() == components * size ) {
+        if (result != null && result.capacity() == components * size) {
             // Current is good enough
             result.clear();
             return result;
         }
-        
+
         // Else we need to create one
         result = BufferUtils.createShortBuffer(components * size);
         return result;
     }
 
+    @Override
+    public void write(final JmeExporter exporter) throws IOException {
+        super.write(exporter);
+        final OutputCapsule capsule = exporter.getCapsule(this);
+        capsule.write(radials, "radials", 0);
+        capsule.write(slices, "slices", 0);
+        capsule.write(innerRadius, "innerRadius", 0F);
+        capsule.write(outerRadius, "outerRadius", 0F);
+        capsule.write(baseRadius, "baseRadius", 0F);
+        capsule.write(inside, "inside", false);
+    }
+
+    @Override
+    public void read(final JmeImporter importer) throws IOException {
+        super.read(importer);
+        final InputCapsule capsule = importer.getCapsule(this);
+        radials = capsule.readInt("radials", 0);
+        slices = capsule.readInt("slices", 0);
+        innerRadius = capsule.readFloat("innerRadius", 0F);
+        outerRadius = capsule.readFloat("outerRadius", 0F);
+        baseRadius = capsule.readFloat("baseRadius", 0F);
+        inside = capsule.readBoolean("inside", false);
+        updateGeometry(innerRadius, outerRadius, radials, slices, inside);
+    }
 }

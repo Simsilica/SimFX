@@ -50,120 +50,124 @@ import com.simsilica.lemur.core.VersionedReference;
 import com.simsilica.lemur.event.BaseAppState;
 
 /**
- *
- *
- *  @author    Paul Speed
+ * @author Paul Speed
  */
 public class LightingState extends BaseAppState {
 
-    public static final ColorRGBA DEFAULT_DIFFUSE = ColorRGBA.White.mult(2); 
+    public static final ColorRGBA DEFAULT_DIFFUSE = ColorRGBA.White.mult(2);
     public static final ColorRGBA DEFAULT_AMBIENT = new ColorRGBA(0.25f, 0.25f, 0.25f, 1);
 
-    protected VersionedHolder<Vector3f> lightDir = new VersionedHolder<Vector3f>();
+    public static final Vector3f NEGATE_Y = Vector3f.UNIT_Y.negate();
 
-    protected ColorRGBA sunColor;
+    protected VersionedHolder<Vector3f> lightDir;
+
     protected DirectionalLight sun;
-    protected ColorRGBA ambientColor;
     protected AmbientLight ambient;
+    protected Node rootNode;
 
-    private float timeOfDay = FastMath.atan2(1, 0.3f) / FastMath.PI;    
-    private float inclination = FastMath.HALF_PI - FastMath.atan2(1, 0.4f);
-    private float orientation = 0; //FastMath.HALF_PI; 
+    protected Quaternion temp1;
+    protected Quaternion temp2;
 
-    protected Node rootNode;  // the one we added the lights to
-    
+    private float timeOfDay;
+    private float inclination;
+    private float orientation;
+
     public LightingState() {
         this(FastMath.atan2(1, 0.3f) / FastMath.PI);
     }
 
-    public LightingState( float time ) {
-        //lightDir.setObject(new Vector3f(-0.2f, -1, -0.3f).normalizeLocal());
-        this.sunColor = DEFAULT_DIFFUSE.clone();
-        this.ambientColor = DEFAULT_AMBIENT.clone();
-        setTimeOfDay(time);
+    public LightingState(final float time) {
+        this.lightDir = new VersionedHolder<>(new Vector3f());
+        this.temp1 = new Quaternion();
+        this.temp2 = new Quaternion();
+        this.timeOfDay = time;
+        this.inclination = FastMath.HALF_PI - FastMath.atan2(1, 0.4f);
+        this.orientation = 0; //FastMath.HALF_PI;
+        this.sun = new DirectionalLight();
+        this.sun.setColor(DEFAULT_DIFFUSE);
+        this.sun.setDirection(lightDir.getObject());
+        this.ambient = new AmbientLight();
+        this.ambient.setColor(DEFAULT_AMBIENT);
         resetLightDir(); // just in case it didn't change but we still need to calculate it
+        setEnabled(false);
     }
- 
+
     public DirectionalLight getSun() {
         return sun;
     }
-    
+
+    public AmbientLight getAmbient() {
+        return ambient;
+    }
+
     public VersionedReference<Vector3f> getLightDirRef() {
         return lightDir.createReference();
     }
 
-    public void setSunColor( ColorRGBA color ) {
-        this.sunColor.set(color);
+    public void setSunColor(ColorRGBA color) {
+        this.sun.setColor(color);
     }
-    
+
     public ColorRGBA getSunColor() {
-        return sunColor;
+        return sun.getColor();
     }
- 
-    public void setAmbient( ColorRGBA ambient ) {
-        this.ambientColor.set(ambient);
+
+    public void setAmbientColor(ColorRGBA ambient) {
+        this.ambient.setColor(ambient);
     }
-    
-    public ColorRGBA getAmbient() {
-        return ambientColor;
+
+    public ColorRGBA getAmbientColor() {
+        return ambient.getColor();
     }
-    
-    public void setTimeOfDay( float f ) {
-        if( this.timeOfDay == f ) {
-            return;
-        }
-        this.timeOfDay = f;
-        resetLightDir();        
+
+    public void setTimeOfDay(final float time) {
+        if (timeOfDay == time) return;
+        timeOfDay = time;
+        resetLightDir();
     }
-    
+
     public float getTimeOfDay() {
         return timeOfDay;
     }
 
-    public void setOrientation( float f ) {
-        if( this.orientation == f ) {
-            return;
-        }
-        this.orientation = f;
-        resetLightDir();        
+    public void setOrientation(final float orientation) {
+        if (this.orientation == orientation) return;
+        this.orientation = orientation;
+        resetLightDir();
     }
-    
+
     public float getOrientation() {
         return orientation;
     }
- 
+
     protected void resetLightDir() {
+
         float angle = timeOfDay * FastMath.PI;
- 
-        Quaternion q1 = new Quaternion().fromAngles(0, 0, (angle - FastMath.HALF_PI));
-        Quaternion q2 = new Quaternion().fromAngles(inclination, orientation, 0);
-        Vector3f dir = q2.mult(q1).mult(Vector3f.UNIT_Y.negate());
-        lightDir.setObject(dir);
-        if( sun != null ) {
+
+        temp1.fromAngles(0, 0, (angle - FastMath.HALF_PI));
+        temp2.fromAngles(inclination, orientation, 0);
+        temp2.multLocal(temp1).mult(NEGATE_Y, lightDir.getObject());
+
+        lightDir.setObject(lightDir.getObject());
+
+        if (sun != null) {
             sun.setDirection(lightDir.getObject());
         }
     }
-    
-    @Override
-    protected void initialize( Application app ) {
 
-        if( rootNode == null ) {
-            rootNode = ((SimpleApplication)app).getRootNode();
+    @Override
+    protected void initialize(final Application app) {
+
+        if (rootNode == null) {
+            rootNode = ((SimpleApplication) app).getRootNode();
         }
 
-        sun = new DirectionalLight();
-        sun.setColor(sunColor);
-        sun.setDirection(lightDir.getObject());
-        
-        ambient = new AmbientLight();
-        ambient.setColor(ambientColor);
         resetLightDir();
-        
-        //setTimeOfDay(0.05f);
     }
 
     @Override
-    protected void cleanup( Application app ) {
+    protected void cleanup(Application app) {
+        rootNode = null;
     }
 
     /**
@@ -182,12 +186,14 @@ public class LightingState extends BaseAppState {
 
     @Override
     protected void enable() {
+        if (rootNode == null) return;
         rootNode.addLight(sun);
         rootNode.addLight(ambient);
     }
 
     @Override
     protected void disable() {
+        if (rootNode == null) return;
         rootNode.removeLight(sun);
         rootNode.removeLight(ambient);
     }
