@@ -93,6 +93,19 @@ public class SkyState extends BaseAppState {
     private VersionedReference<Vector3f> lightDir;
 
     public SkyState() {
+        this(null, false);
+    }
+    
+    public SkyState( ColorRGBA groundColor ) {
+        this(groundColor, groundColor != null);   
+    }
+    
+    public SkyState( ColorRGBA groundColor, boolean showGroundDisc ) {
+        
+        this.showGround = showGroundDisc;
+        if( groundColor != null ) {
+            this.groundColor.set(groundColor);
+        } 
         this.sunColor = new ColorRGBA(1, 1, 0.9f, 1);
         this.skyColor = new ColorRGBA(0.5f, 0.5f, 1f, 1);
         
@@ -247,9 +260,9 @@ public class SkyState extends BaseAppState {
     @Override
     protected void enable() {
         rootNode.attachChild(sky);
-        if( showGround ) {
-            rootNode.attachChild(groundDisc);
-        }
+        
+        resetMaterials();
+        resetGround();
     }
 
     @Override
