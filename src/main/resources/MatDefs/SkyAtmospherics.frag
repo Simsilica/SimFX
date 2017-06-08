@@ -1,3 +1,4 @@
+#import "Common/ShaderLib/GLSLCompat.glsllib"
 
 uniform vec3 m_SunPosition;
 uniform float m_PhasePrefix1;

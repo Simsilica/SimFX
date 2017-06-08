@@ -22,6 +22,27 @@ MaterialDef Ground Atmospheric Scattering {
 
     Technique {
 
+        VertexShader GLSL150:   MatDefs/GroundAtmospherics.vert
+        FragmentShader GLSL150: MatDefs/GroundAtmospherics.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            ViewProjectionMatrix
+            WorldViewMatrix
+            ViewMatrix
+            ProjectionMatrix
+            WorldMatrix
+            CameraPosition
+        }
+
+        Defines {
+            USE_SCATTERING : UseScattering
+            FOLLOW_CAMERA : FollowCamera
+        }
+    }
+
+    Technique {
+
         VertexShader GLSL110:   MatDefs/GroundAtmospherics.vert
         FragmentShader GLSL110: MatDefs/GroundAtmospherics.frag
 
@@ -40,5 +61,4 @@ MaterialDef Ground Atmospheric Scattering {
             FOLLOW_CAMERA : FollowCamera  
         }
     }
-
 }

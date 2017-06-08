@@ -150,6 +150,54 @@ MaterialDef Scattered Phong Lighting {
 
         LightMode MultiPass
 
+        VertexShader GLSL150:   Common/MatDefs/Light/Lighting.vert
+        FragmentShader GLSL150: Common/MatDefs/Light/Lighting.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            NormalMatrix
+            WorldViewMatrix
+            ViewMatrix
+            CameraPosition
+            WorldMatrix
+        }
+
+        Defines {
+            LATC : LATC
+            VERTEX_COLOR : UseVertexColor
+            VERTEX_LIGHTING : VertexLighting
+            ATTENUATION : Attenuation
+            MATERIAL_COLORS : UseMaterialColors
+            V_TANGENT : VTangent
+            MINNAERT  : Minnaert
+            WARDISO   : WardIso
+            LOW_QUALITY : LowQuality
+            HQ_ATTENUATION : HighQuality
+
+            DIFFUSEMAP : DiffuseMap
+            NORMALMAP : NormalMap
+            SPECULARMAP : SpecularMap
+            PARALLAXMAP : ParallaxMap
+            NORMALMAP_PARALLAX : PackedNormalParallax
+            STEEP_PARALLAX : SteepParallax
+            ALPHAMAP : AlphaMap
+            COLORRAMP : ColorRamp
+            LIGHTMAP : LightMap
+            SEPARATE_TEXCOORD : SeparateTexCoord
+
+            USE_REFLECTION : EnvMap
+            SPHERE_MAP : SphereMap
+
+            NUM_BONES : NumberOfBones
+
+            USE_SCATTERING : UseScattering
+        }
+    }
+
+    Technique {
+
+        LightMode MultiPass
+
         VertexShader GLSL100:   Common/MatDefs/Light/Lighting.vert
         FragmentShader GLSL100: Common/MatDefs/Light/Lighting.frag
 
@@ -196,6 +244,31 @@ MaterialDef Scattered Phong Lighting {
 
     Technique PreShadow {
 
+        VertexShader GLSL150 :   Common/MatDefs/Shadow/PreShadow.vert
+        FragmentShader GLSL150 : Common/MatDefs/Shadow/PreShadow.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldViewMatrix
+        }
+
+        Defines {
+            COLOR_MAP : ColorMap
+            DISCARD_ALPHA : AlphaDiscardThreshold
+            NUM_BONES : NumberOfBones
+        }
+
+        ForcedRenderState {
+            FaceCull Off
+            DepthTest On
+            DepthWrite On
+            PolyOffset 5 3
+            ColorWrite Off
+        }
+    }
+
+    Technique PreShadow {
+
         VertexShader GLSL100 :   Common/MatDefs/Shadow/PreShadow.vert
         FragmentShader GLSL100 : Common/MatDefs/Shadow/PreShadow.frag
 
@@ -217,13 +290,12 @@ MaterialDef Scattered Phong Lighting {
             PolyOffset 5 3
             ColorWrite Off
         }
-
     }
 
 
-    Technique PostShadow15{
-        VertexShader GLSL150:   Common/MatDefs/Shadow/PostShadow15.vert
-        FragmentShader GLSL150: Common/MatDefs/Shadow/PostShadow15.frag
+    Technique PostShadow {
+        VertexShader GLSL150:   Common/MatDefs/Shadow/PostShadow.vert
+        FragmentShader GLSL150: Common/MatDefs/Shadow/PostShadow.frag
 
         WorldParameters {
             WorldViewProjectionMatrix
@@ -250,7 +322,7 @@ MaterialDef Scattered Phong Lighting {
         }
     }
 
-    Technique PostShadow{
+    Technique PostShadow {
         VertexShader GLSL100:   Common/MatDefs/Shadow/PostShadow.vert
         FragmentShader GLSL100: Common/MatDefs/Shadow/PostShadow.frag
 
@@ -279,7 +351,24 @@ MaterialDef Scattered Phong Lighting {
         }
     }
 
-  Technique PreNormalPass {
+    Technique PreNormalPass {
+
+        VertexShader GLSL150 :   Common/MatDefs/SSAO/normal.vert
+        FragmentShader GLSL150 : Common/MatDefs/SSAO/normal.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            WorldViewMatrix
+            NormalMatrix
+        }
+
+        Defines {
+            DIFFUSEMAP_ALPHA : DiffuseMap
+            NUM_BONES : NumberOfBones
+        }
+    }
+
+    Technique PreNormalPass {
 
         VertexShader GLSL100 :   Common/MatDefs/SSAO/normal.vert
         FragmentShader GLSL100 : Common/MatDefs/SSAO/normal.frag
@@ -294,7 +383,54 @@ MaterialDef Scattered Phong Lighting {
             DIFFUSEMAP_ALPHA : DiffuseMap
             NUM_BONES : NumberOfBones
         }
+    }
 
+    Technique GBuf {
+
+        VertexShader GLSL150:   Common/MatDefs/Light/GBuf.vert
+        FragmentShader GLSL150: Common/MatDefs/Light/GBuf.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            NormalMatrix
+            WorldViewMatrix
+            WorldMatrix
+        }
+
+        Defines {
+            VERTEX_COLOR : UseVertexColor
+            MATERIAL_COLORS : UseMaterialColors
+            V_TANGENT : VTangent
+            MINNAERT  : Minnaert
+            WARDISO   : WardIso
+
+            DIFFUSEMAP : DiffuseMap
+            NORMALMAP : NormalMap
+            SPECULARMAP : SpecularMap
+            PARALLAXMAP : ParallaxMap
+        }
+    }
+
+    Technique {
+        LightMode FixedPipeline
+    }
+
+    Technique Glow {
+
+        VertexShader GLSL150:   Common/MatDefs/Misc/Unshaded.vert
+        FragmentShader GLSL150: Common/MatDefs/Light/Glow.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+        }
+
+        Defines {
+            NEED_TEXCOORD1
+            HAS_GLOWMAP : GlowMap
+            HAS_GLOWCOLOR : GlowColor
+
+            NUM_BONES : NumberOfBones
+        }
     }
 
     Technique GBuf {
@@ -344,5 +480,4 @@ MaterialDef Scattered Phong Lighting {
             NUM_BONES : NumberOfBones
         }
     }
-
 }

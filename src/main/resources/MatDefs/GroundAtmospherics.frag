@@ -1,4 +1,4 @@
-
+#import "Common/ShaderLib/GLSLCompat.glsllib"
 #import "MatDefs/FragScattering.glsllib"
 
 uniform vec4 m_GroundColor;

@@ -1,6 +1,6 @@
 #define ATTENUATION
 //#define HQ_ATTENUATION
-
+#import "Common/ShaderLib/GLSLCompat.glsllib"
 #import "Common/ShaderLib/Skinning.glsllib"
 #import "MatDefs/VertScattering.glsllib"
 

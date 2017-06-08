@@ -35,6 +35,24 @@ MaterialDef Sky Atmospheric Scattering {
 
     Technique {
 
+        VertexShader GLSL150:   MatDefs/SkyAtmospherics.vert
+        FragmentShader GLSL150: MatDefs/SkyAtmospherics.frag
+
+        WorldParameters {
+            WorldViewProjectionMatrix
+            ViewMatrix
+            ViewProjectionMatrix
+            ProjectionMatrix
+            WorldMatrix
+            CameraPosition
+        }
+
+        Defines {
+        }
+    }
+
+    Technique {
+
         VertexShader GLSL110:   MatDefs/SkyAtmospherics.vert
         FragmentShader GLSL110: MatDefs/SkyAtmospherics.frag
 
@@ -50,5 +68,4 @@ MaterialDef Sky Atmospheric Scattering {
         Defines {
         }
     }
-
 }

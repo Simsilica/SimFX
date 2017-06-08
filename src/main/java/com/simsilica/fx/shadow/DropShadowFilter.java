@@ -314,12 +314,15 @@ public class DropShadowFilter extends Filter implements JmeCloneable, Cloneable 
         final BoundingSphere cullCheck = new BoundingSphere();
         final Vector3f pos = new Vector3f();
 
-        final Texture frameTex = prevFilterBuffer.getColorBuffer().getTexture();
-        final Texture depthTex = prevFilterBuffer.getDepthBuffer().getTexture();
+        final FrameBuffer.RenderBuffer colorBuffer = prevFilterBuffer.getColorBuffer();
+        final FrameBuffer.RenderBuffer depthBuffer = prevFilterBuffer.getDepthBuffer();
+
+        final Texture frameTex = colorBuffer.getTexture();
+        final Texture depthTex = depthBuffer.getTexture();
 
         shadowMaterial.setTexture("FrameTexture", frameTex);
 
-        if (frameTex.getImage().getMultiSamples() > 1) {
+        if (frameTex != null && frameTex.getImage().getMultiSamples() > 1) {
             shadowMaterial.setInt("NumSamples", frameTex.getImage().getMultiSamples());
         } else {
             shadowMaterial.clearParam("NumSamples");
@@ -327,7 +330,7 @@ public class DropShadowFilter extends Filter implements JmeCloneable, Cloneable 
 
         shadowMaterial.setTexture("DepthTexture", depthTex);
 
-        if (depthTex.getImage().getMultiSamples() > 1) {
+        if (depthTex != null && depthTex.getImage().getMultiSamples() > 1) {
             shadowMaterial.setInt("NumSamplesDepth", depthTex.getImage().getMultiSamples());
         } else {
             shadowMaterial.clearParam("NumSamplesDepth");
