@@ -67,10 +67,18 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from javadoc.destinationDir
 }
+ 
+task assetsJar(type: Jar) {
+    classifier = 'assets'
+    from file('assets')
+    exclude '**/*.psd'
+    exclude '**/.backups'
+}
   
 artifacts {
     archives sourcesJar
     archives javadocJar
+    archives assetsJar
 }
 
 // Put this at the end or it won't pick up the project.version and stuff
