@@ -150,8 +150,8 @@ MaterialDef Scattered Phong Lighting {
 
         LightMode MultiPass
 
-        VertexShader GLSL100:   Common/MatDefs/Light/Lighting.vert
-        FragmentShader GLSL100: Common/MatDefs/Light/Lighting.frag
+        VertexShader GLSL100:   MatDefs/ScatteredLighting.vert
+        FragmentShader GLSL100: MatDefs/ScatteredLighting.frag
 
         WorldParameters {
             WorldViewProjectionMatrix
