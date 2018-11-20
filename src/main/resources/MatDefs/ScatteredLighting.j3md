@@ -323,10 +323,6 @@ MaterialDef Scattered Phong Lighting {
         }
     }
 
-    Technique {
-        LightMode FixedPipeline
-    }
-
     Technique Glow {
 
         VertexShader GLSL100:   Common/MatDefs/Misc/Unshaded.vert
