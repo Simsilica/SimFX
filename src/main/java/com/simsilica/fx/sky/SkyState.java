@@ -38,6 +38,7 @@ package com.simsilica.fx.sky;
 
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.BaseAppState;
 import com.jme3.asset.AssetManager;
 import com.jme3.bounding.BoundingSphere;
 import com.jme3.material.Material;
@@ -49,11 +50,11 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
 import com.jme3.scene.shape.Sphere;
+
 import com.simsilica.fx.LightingState;
 import com.simsilica.fx.geom.TruncatedDome;
 import com.simsilica.lemur.GuiGlobals;
 import com.simsilica.lemur.core.VersionedReference;
-import com.simsilica.lemur.event.BaseAppState;
 
 
 /**
@@ -98,6 +99,10 @@ public class SkyState extends BaseAppState {
     
     public SkyState( ColorRGBA groundColor ) {
         this(groundColor, groundColor != null);   
+    }
+ 
+    public SkyState( boolean showGroundDisc ) {
+        this(null, showGroundDisc);
     }
     
     public SkyState( ColorRGBA groundColor, boolean showGroundDisc ) {
@@ -235,6 +240,7 @@ public class SkyState extends BaseAppState {
         mat.setFloat("GroundScale", 10);
         //mat.getAdditionalRenderState().setWireframe(true);
         groundDisc.setMaterial(mat);
+        //groundDisc.setMaterial(GuiGlobals.getInstance().createMaterial(ColorRGBA.Red, false).getMaterial());
         atmosphericParms.applyGroundParameters(mat, true);
            
         atmosphericParms.calculateGroundColor(ColorRGBA.White, Vector3f.UNIT_X, 1f, 0, lightingColor);
@@ -258,7 +264,7 @@ public class SkyState extends BaseAppState {
     }
 
     @Override
-    protected void enable() {
+    protected void onEnable() {
         rootNode.attachChild(sky);
         
         resetMaterials();
@@ -266,7 +272,7 @@ public class SkyState extends BaseAppState {
     }
 
     @Override
-    protected void disable() {
+    protected void onDisable() {
         sky.removeFromParent();
         groundDisc.removeFromParent();
     }    
