@@ -8,6 +8,9 @@ MaterialDef Simple Shadows {
 
         Texture2D FrameTexture
         Texture2D DepthTexture
+        
+        // For debugging purposes
+        Boolean ShowBox 
     }
 
     Technique {
@@ -23,6 +26,7 @@ MaterialDef Simple Shadows {
         Defines {
             RESOLVE_MS : NumSamples
             RESOLVE_DEPTH_MS : NumSamplesDepth
+            SHOW_BOX : ShowBox
         }
     }
 

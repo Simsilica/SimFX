@@ -120,6 +120,9 @@ public class DropShadowFilter extends Filter {
 
     private GeometryList casters;
 
+    // Debug settings
+    private boolean showBox = false;
+
     /**
      *  Creates a drop shadow filter that will show shadows, up to the 500 nearest 
      *  shadow-casting objects.
@@ -142,6 +145,21 @@ public class DropShadowFilter extends Filter {
     
     public float getShadowIntensity() {
         return shadowColor.a;
+    }
+    
+    /**
+     *  Turns on a debug view where the full box is rendered
+     *  using the texture coordinates as colors.
+     */
+    public void setShowBox( boolean f ) {
+        this.showBox = f;
+        if( shadowMaterial != null ) {
+            shadowMaterial.setBoolean("ShowBox", showBox);
+        }
+    }
+    
+    public boolean getShowBox() {
+        return showBox;
     }    
 
     @Override
@@ -175,6 +193,7 @@ public class DropShadowFilter extends Filter {
         shadowGeom = new Geometry("shadowVolumes", mesh);
         Material m = shadowMaterial = new Material(assets, "MatDefs/shadow/Shadows.j3md");
         m.setColor("ShadowColor", shadowColor);
+        m.setBoolean("ShowBox", showBox);
         m.getAdditionalRenderState().setDepthWrite(false);
         m.getAdditionalRenderState().setDepthTest(false); 
         m.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
@@ -260,22 +279,65 @@ public class DropShadowFilter extends Filter {
             float xEx = bounds.getXExtent() * scale;
             float yEx = bounds.getYExtent() * scale;
             float zEx = bounds.getZExtent() * scale;
-            float volumeHeight = Math.max(yEx, Math.min(xEx,zEx));
+            //float volumeHeight = Math.max(yEx, Math.min(xEx,zEx));
 
-            float xOffset = bounds.getCenter().x * scale;
-            float yOffset = bounds.getCenter().y * scale;
-            float zOffset = bounds.getCenter().z * scale;
+            //float xOffset = bounds.getCenter().x * scale;
+            //float yOffset = bounds.getCenter().y * scale;
+            //float zOffset = bounds.getCenter().z * scale;
 
-            yOffset -= yEx;
-            yOffset -= volumeHeight * 0.5f;
-            yOffset += 0.01f;
+            //yOffset -= yEx;
+            //yOffset -= volumeHeight * 0.5f;
+            //yOffset += 0.01f;
+            // This code causes the shadow center to move to odd
+            // places for non-yaw rotations.
+            //pos.set(g.getWorldTranslation());
+            //pos.addLocal(xOffset, yOffset, zOffset);
 
-            pos.set(g.getWorldTranslation());
-            pos.addLocal(xOffset, yOffset, zOffset);
+            Quaternion quat = g.getWorldRotation();
+            angles = quat.toAngles(angles);
+            float volumeHeight;
+            float radius;
+            float cubeEpsilon = 0.01f;
+            if( Math.abs(xEx - yEx) < cubeEpsilon 
+                && Math.abs(xEx - zEx) < cubeEpsilon 
+                && Math.abs(yEx - zEx) < cubeEpsilon ) {
+                // Then the object is basically cubical and it doesn't
+                // make any sense to treat it as anything other than a
+                // "sphere" for purposes of the shadow box.
+                volumeHeight = xEx; // doesn't matter as they are all the same
+                radius = xEx; // doesn't matter as they are all the same
+            } else {            
+                // Then the object is oblong in some way so we'll try to
+                // approximate it's shape projected into the x/z plane.
+                 
+                // Let's try calculating better box dimensions by projecting
+                // extent axis rays into yaw space.  Hopefully an approximation
+                // better than a sphere while still adapting well to random non-yaw
+                // orientations.
+                // "yaw space" is our quaternion without the yaw component...
+                // we'll be rotating the shadow box by the yaw component later. 
+                Quaternion yawSpace = new Quaternion().fromAngles(angles[0], 0, angles[2]);
+                Vector3f xAxis = yawSpace.mult(new Vector3f(xEx, 0, 0));
+                Vector3f yAxis = yawSpace.mult(new Vector3f(0, yEx, 0));
+                Vector3f zAxis = yawSpace.mult(new Vector3f(0, 0, zEx));
+            
+                xEx = Math.max(Math.max(Math.abs(xAxis.x), Math.abs(yAxis.x)), Math.abs(zAxis.x));
+                yEx = Math.max(Math.max(Math.abs(xAxis.y), Math.abs(yAxis.y)), Math.abs(zAxis.y));
+                zEx = Math.max(Math.max(Math.abs(xAxis.z), Math.abs(yAxis.z)), Math.abs(zAxis.z));
+                volumeHeight = yEx; 
+                
+                // Rought worst-case radius for frustum checking               
+                radius = Math.max(xEx, Math.max(yEx, zEx));
+            } 
+            
+            BoundingBox worldBounds = (BoundingBox)g.getWorldBound();
+            pos.set(worldBounds.getCenter());
+            pos.y -= yEx;
+            pos.y -= volumeHeight * 0.5f;
 
             // A conservative approximation that works because our shadow volume
             // is really just a round blob
-            float radius = Math.max(xEx, Math.max(yEx, zEx));
+            //float radius = Math.max(xEx, Math.max(yEx, zEx));
             cullCheck.setCenter(pos);
             cullCheck.setRadius(radius);
 
@@ -290,8 +352,6 @@ public class DropShadowFilter extends Filter {
 
             boxScale.set(0.5f/xEx, 0.5f/volumeHeight, 0.5f/zEx);
 
-            Quaternion quat = g.getWorldRotation();
-            angles = quat.toAngles(angles);
 
             Quaternion rotation = new Quaternion().fromAngles(0, angles[1], 0);
             Quaternion invRotation = rotation.inverse();
