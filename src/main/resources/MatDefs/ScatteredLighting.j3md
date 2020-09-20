@@ -143,7 +143,11 @@ MaterialDef Scattered Phong Lighting {
         Vector3 InvWavelengthsKrESun        
         Float AverageDensityScale
         Float InvAverageDensityHeight;
-        Vector3 KWavelengths4PI;        
+        Vector3 KWavelengths4PI;
+ 
+        // Not used but here so it doesn't barf if used for shadows       
+        Vector3 LightDir
+        Boolean BackfaceShadows : false                
     }
 
     Technique {
