@@ -62,9 +62,9 @@ public class LightingState extends BaseAppState {
     private VersionedHolder<Vector3f> lightDir = new VersionedHolder<Vector3f>();
     
     private ColorRGBA sunColor;
-    private DirectionalLight sun;
+    private DirectionalLight sun = new DirectionalLight();
     private ColorRGBA ambientColor;
-    private AmbientLight ambient;
+    private AmbientLight ambient = new AmbientLight();
     private float timeOfDay = FastMath.atan2(1, 0.3f) / FastMath.PI;    
     private float inclination = FastMath.HALF_PI - FastMath.atan2(1, 0.4f);
     private float orientation = 0; //FastMath.HALF_PI; 
@@ -93,6 +93,7 @@ public class LightingState extends BaseAppState {
 
     public void setSunColor( ColorRGBA color ) {
         this.sunColor.set(color);
+        this.sun.setColor(sunColor);
     }
     
     public ColorRGBA getSunColor() {
@@ -101,6 +102,7 @@ public class LightingState extends BaseAppState {
  
     public void setAmbient( ColorRGBA ambient ) {
         this.ambientColor.set(ambient);
+        this.ambient.setColor(ambientColor);
     }
     
     public ColorRGBA getAmbient() {
@@ -145,7 +147,7 @@ public class LightingState extends BaseAppState {
     
     @Override
     protected void initialize( Application app ) {
-        sun = new DirectionalLight();
+        
         sun.setColor(sunColor);
         sun.setDirection(lightDir.getObject());
         
