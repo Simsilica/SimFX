@@ -174,13 +174,17 @@ public class SkyState extends BaseAppState {
     
     protected void resetMaterials() {
         if( flat ) {
-            sky.setMaterial(flatMaterial);
-            sun.setCullHint(CullHint.Inherit);
-            groundMaterial.setBoolean("UseScattering", false);
+            if( sky != null ) {
+                sky.setMaterial(flatMaterial);
+                sun.setCullHint(CullHint.Inherit);
+                groundMaterial.setBoolean("UseScattering", false);
+            }
         } else {
-            sky.setMaterial(atmosphericMaterial);
-            sun.setCullHint(CullHint.Never);
-            groundMaterial.setBoolean("UseScattering", true);
+            if( sky != null ) {
+                sky.setMaterial(atmosphericMaterial);
+                sun.setCullHint(CullHint.Never);
+                groundMaterial.setBoolean("UseScattering", true);
+            }
         }
     }
     
