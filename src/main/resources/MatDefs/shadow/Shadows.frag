@@ -19,7 +19,7 @@ void main(){
 
     vec2 uv = vec2(gl_FragCoord.x/g_ViewPort.z, gl_FragCoord.y/g_ViewPort.w);
 
-    float zBuffer = getDepth( m_DepthTexture, uv ).r;
+    float zBuffer = getDepth(m_DepthTexture, uv).r;
 
     //
     // z_buffer_value = a + b / z;
