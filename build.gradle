@@ -4,6 +4,8 @@
 
 plugins {
     id 'sim-fx.published-library'
+    id 'java-library'
+    id 'maven-publish'
 }
 
 version='1.0.1-SNAPSHOT'
